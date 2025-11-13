@@ -8,54 +8,49 @@ const path = require("path");
 // config set karo (env vars se lena best hai)
 cloudinary.config(cloudinaryConfig);
 
+// ✅ Upload file
 
-// Detect resource type based on file extension
-const detectResourceType = (filename) => {
-  const ext = path.extname(filename).toLowerCase();
+//  const cloudinaryUpload = async (filePath, folder, type = "image") => {
+//   try {
+//     const uploadRes = await cloudinary.uploader.upload(filePath, {
+//       folder: folder || "general",
+//       resource_type: type,
+//     });
+//     console.log(filePath);
+//     // ✅ Delete local file safely (only the filePath, not joined again)
+//     try {
+//       await fs.unlink(filePath);
+//       console.log("Local file deleted:", filePath);
+//     } catch (err) {
+//       console.warn("Local file deletion failed:", err.message);
+//     }
 
-  if ([".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"].includes(ext))
-    return "image";
+//     return uploadRes;
+//   } catch (error) {
+//     // ✅ Attempt to delete even if upload fails
+//     try {
+//       await fs.unlink(filePath);
+//     } catch (err) {
+//       console.warn("Cleanup file deletion failed:", err.message);
+//     }
 
-  if ([".mp4", ".mov", ".avi", ".mkv", ".webm"].includes(ext))
-    return "video";
+//     throw new Error("Cloudinary upload failed: " + error.message);
+//   }
+// };
 
-  if ([".mp3", ".wav", ".ogg", ".aac"].includes(ext))
-    return "video"; // audio as video
-
-  // 🧾 IMPORTANT: for pdf, txt, zip, docs — return 'raw'
-  if ([".pdf", ".txt", ".zip", ".docx", ".xlsx", ".pptx"].includes(ext))
-    return "raw";
-
-  return "auto";
-};
-
-
-// Upload buffer to Cloudinary
-const cloudinaryUpload = (buffer, folder, filename) => {
+const cloudinaryUpload = (buffer, folder, resourceType = "auto") => {
   return new Promise((resolve, reject) => {
-    const resourceType = detectResourceType(filename);
-    console.log("Detected type:", resourceType);
-
     const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder,
-        resource_type: resourceType,  // 🧠 this decides correct handling
-        use_filename: true,
-        unique_filename: false,
-        filename_override: filename,
-        overwrite: true,
-      },
+      { folder, resource_type: resourceType },
       (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
+        if (error) reject(error);
+        else resolve(result);
       }
     );
 
     streamifier.createReadStream(buffer).pipe(uploadStream);
   });
 };
-
-
 
 // ✅ Delete file
 const cloudinaryDelete = async (public_id, resource_type = "image") => {

@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const https = require("https");
+const http =require("http")
 const mongoose = require('mongoose');
 const path = require('path');
 const upload = require('./config/multerconfig');
@@ -16,13 +18,20 @@ app.use(express.urlencoded({extended:true}));
 
 
 // Upload route
+
 app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file provided' });
 
-    const result = await cloudinaryUpload(req.file.buffer, cloudinaryFolderNames.files,req?.file.originalname);
+    // Pass the buffer, folder name, and original filename
+    const result = await cloudinaryUpload(
+      req.file.buffer, 
+      cloudinaryFolderNames.files, 
+    );
+    
     console.log(result);
 
+    // Assuming you have a Mongoose model 'File' defined elsewhere
     const file = await File.create({
       filename: req.file.originalname,
       public_id: result.public_id,
@@ -43,6 +52,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     res.status(500).json({ error: 'Upload failed', details: err.message });
   }
 });
+
 
 
 // =========================
@@ -66,19 +76,44 @@ app.get("/files", async (req, res) => {
 // =========================
 // ⬇️ Download File (Cloudinary Redirect)
 // =========================
+// Install axios first: npm install axios
+
+
+ 
+
 app.get("/download/:id", async (req, res) => {
   try {
     const file = await File.findById(req.params.id);
-    if (!file)
+    if (!file) {
       return res.status(404).json({ success: false, error: "File not found" });
+    }
 
-    // Just redirect to secure_url on Cloudinary
-    return res.redirect(file.secure_url);
+    // 1️⃣ Set headers
+    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+    res.setHeader("Content-Type", file.mimetype || "application/octet-stream");
+
+    // 2️⃣ Choose correct module (https or http)
+    const client = file.secure_url.startsWith("https") ? https : http;
+
+    // 3️⃣ Stream the file directly from Cloudinary to client
+    client.get(file.secure_url, (cloudRes) => {
+      if (cloudRes.statusCode !== 200) {
+        return res.status(500).json({ success: false, error: "Failed to fetch file from Cloudinary" });
+      }
+      cloudRes.pipe(res);
+    }).on("error", (err) => {
+      console.error("❌ Error while downloading:", err);
+      res.status(500).json({ success: false, error: "Download failed" });
+    });
+
   } catch (err) {
     console.error("❌ Download failed:", err);
     res.status(500).json({ success: false, error: "Download failed" });
   }
 });
+
+
+
 
 // =========================
 // 🗑️ Delete File (from Cloudinary + MongoDB)
