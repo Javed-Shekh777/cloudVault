@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const https = require("https");
-const http =require("http")
+const http = require("http")
 const mongoose = require('mongoose');
 const path = require('path');
 const upload = require('./config/multerconfig');
@@ -14,7 +14,7 @@ const app = express();
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
+app.use(express.urlencoded({ extended: true }));
 
 
 // Upload route
@@ -25,11 +25,22 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
     // Pass the buffer, folder name, and original filename
     const result = await cloudinaryUpload(
-      req.file.buffer, 
-      cloudinaryFolderNames.files, 
+      req.file.buffer,
+      cloudinaryFolderNames.files,
     );
-    
+
     console.log(result);
+    const originalName = req.file.originalname;
+
+    // remove extension
+    const fileNameWithoutExt = originalName.replace(/\.[^/.]+$/, "");
+
+    const downloadUrl = result.secure_url.replace(
+      "/upload/",
+      `/upload/fl_attachment:${fileNameWithoutExt}`
+    );
+
+
 
     // Assuming you have a Mongoose model 'File' defined elsewhere
     const file = await File.create({
@@ -44,6 +55,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
       duration: result.duration,
       folder: result.folder,
       uploadedAt: new Date(),
+      downloadUrl
     });
 
     res.status(201).json({ message: '✅ File uploaded successfully!', file });
@@ -79,7 +91,12 @@ app.get("/files", async (req, res) => {
 // Install axios first: npm install axios
 
 
- 
+
+
+
+
+
+// Make sure you import your File model (e.g., const File = require('../models/File');)
 
 app.get("/download/:id", async (req, res) => {
   try {
@@ -88,29 +105,17 @@ app.get("/download/:id", async (req, res) => {
       return res.status(404).json({ success: false, error: "File not found" });
     }
 
-    // 1️⃣ Set headers
-    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
-    res.setHeader("Content-Type", file.mimetype || "application/octet-stream");
+    let downloadUrl = file.downloadUrl;
 
-    // 2️⃣ Choose correct module (https or http)
-    const client = file.secure_url.startsWith("https") ? https : http;
-
-    // 3️⃣ Stream the file directly from Cloudinary to client
-    client.get(file.secure_url, (cloudRes) => {
-      if (cloudRes.statusCode !== 200) {
-        return res.status(500).json({ success: false, error: "Failed to fetch file from Cloudinary" });
-      }
-      cloudRes.pipe(res);
-    }).on("error", (err) => {
-      console.error("❌ Error while downloading:", err);
-      res.status(500).json({ success: false, error: "Download failed" });
-    });
+    return res.redirect(downloadUrl);
 
   } catch (err) {
     console.error("❌ Download failed:", err);
     res.status(500).json({ success: false, error: "Download failed" });
   }
 });
+
+
 
 
 

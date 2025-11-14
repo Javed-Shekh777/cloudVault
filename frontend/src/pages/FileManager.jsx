@@ -127,23 +127,20 @@ export default function FileManager() {
     const handleDownload = async (file) => {
         try {
             // Axios call to backend download route
-            const response = await downloadFile(file._id, {
-                responseType: 'blob', // IMPORTANT for binary data
-            });
+            const response = await downloadFile(file._id);
 
             // Create a Blob URL for the file
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            // const url = window.URL.createObjectURL(new Blob([response.data]));
 
             // Create a temporary <a> tag to trigger download
             const link = document.createElement("a");
-            link.href = url;
+            link.href = response.data;
             link.download = file.filename || "downloaded_file";
             document.body.appendChild(link);
             link.click();
 
             // Cleanup
             link.remove();
-            window.URL.revokeObjectURL(url);
 
             console.log("✅ File downloaded:", file.filename);
         } catch (error) {
@@ -313,21 +310,21 @@ export default function FileManager() {
 
 
 
-  function FileGrid({ files, activeMenuId, toggleMenu, handleDownload, handlePrint, handleDelete }) {
+function FileGrid({ files, activeMenuId, toggleMenu, handleDownload, handlePrint, handleDelete }) {
     return (
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
             {files.map((file) => (
                 <div
-                    key={file._id}
-                    className="relative bg-white rounded-lg border hover:shadow-lg transition flex flex-col items-center overflow-hidden"
+                    key={file?._id}
+                    className="relative bg-white rounded-lg border hover:shadow-lg transition flex flex-col items-center "
                 >
                     {/* Thumbnail / Icon */}
-                    <div className="w-full h-32 flex items-center justify-center bg-gray-50">
-                        {file.format.match(/jpg|jpeg|png|gif/i) ? (
+                    <div className="w-full h-32 flex items-center justify-center rounded-lg bg-gray-50">
+                        {file?.format?.match(/jpg|jpeg|png|gif/i) ? (
                             <img
-                                src={file.secure_url}
-                                alt={file.filename}
-                                className="object-cover w-full h-full"
+                                src={file?.secure_url}
+                                alt={file?.filename}
+                                className="object-cover w-full h-full rounded-lg"
                             />
                         ) : (
                             getFileIcon(file)
@@ -345,14 +342,14 @@ export default function FileManager() {
                     </div>
 
                     {/* Options Menu */}
-                    <div className="absolute top-2 right-2">
+                    <div className="absolute z-10 top-2 right-2">
                         <MdMoreHoriz
                             onClick={() => toggleMenu(file._id)}
                             className="w-6 h-6 hover:bg-slate-200 rounded cursor-pointer"
                         />
 
                         {activeMenuId === file._id && (
-                            <div style={{zIndex:1000}} className="absolute  right-0 top-6 rounded-md bg-white shadow p-2 flex flex-col gap-2 w-36">
+                            <div className="absolute z-50 right-0 top-6 rounded-md bg-white shadow p-1.5 flex flex-col gap-1 w-36">
                                 <a
                                     href={file.secure_url}
                                     target="_blank"
@@ -361,14 +358,20 @@ export default function FileManager() {
                                 >
                                     Open
                                 </a>
-
-                                <button
-                                    onClick={() => handleDownload(file)}
+                                <a
+                                    href={file.downloadUrl}
+                                    target="_blank"
+                                    download={true}
+                                    rel="noopener noreferrer"
                                     className="text-green-600 hover:text-green-800 flex items-center gap-2 w-full p-1.5 rounded-md hover:bg-gray-100"
+
                                 >
                                     <FaDownload size={16} />
                                     Download
-                                </button>
+                                </a>
+
+
+
 
                                 <button
                                     onClick={() => handlePrint(file)}

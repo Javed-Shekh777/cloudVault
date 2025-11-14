@@ -66,6 +66,10 @@ const fileSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    downloadUrl:{
+      type:String,
+      trim:true
+    },
 
     // Tags or categories
     tags: [
