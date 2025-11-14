@@ -1,1 +1,48 @@
+/* index.css */
 @import "tailwindcss";
+
+
+/* index.css */
+
+
+
+/* यहाँ custom layers लिख सकते हैं */
+@layer base {
+  h1 {
+    @apply text-2xl font-bold;
+  }
+
+  h2 {
+    @apply text-xl font-semibold;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+
+  .btn-ghost {
+    @apply text-gray-700 hover:bg-gray-100;
+  }
+
+  .menu-btn {
+    @apply w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-100 text-gray-800 focus:outline-none;
+  }
+
+  .menu-btn-danger {
+    @apply  text-red-600;
+  }
+
+
+}
+
+@layer utilities {
+  .shadow-card {
+    @apply shadow-md border border-gray-100 rounded-xl;
+  }
+}

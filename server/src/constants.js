@@ -1,15 +1,12 @@
 const SchemaName = {
-    user: "User",
-    userLog: "UserLog",
-    recipe: "Recipe",
-    recipeLike: "RecipeLike",
-    tag:"Tag",
-    recipeCategory:"recipeCategory",
-    contact:"Contact",
-    replpy:"Reply",
-    recipeComment:"RecipeComment",
+  user: "User",
+  file: "File",
+  folder: "Folder",
+  activity: "Activity",
+  permission: "Permission",
+  trash: "Trash",
+};
 
-}
 
 const cloudinaryFolderNames = {
     files: `${process.env.CLOUDINARY_FOLDER_NAME}/files`,
@@ -23,7 +20,6 @@ const cloudinaryConfig = {
     api_secret: process.env.CLOUDINARY_API_SECRET,
     secure:true,
 }
-// DB_URL=mongodb+srv://mdjavedshekh1210:javed1210@cluster1.jt6wkhm.mongodb.net/cooking?retryWrites=true&w=majority&appName=AtlasApp
 
 const SALT = parseInt(process.env.SALT);
 const dbUrl = process.env.DB_URL || "";
@@ -35,7 +31,7 @@ const MONGODB_URL =
     : `${dbUrl}/${dbName}?retryWrites=true&w=majority&appName=AtlasApp`;
 
 const PORT = process.env.PORT;
-const allowedOrigins = ["https://cookify-ruby-eight.vercel.app","http://10.75.250.127:5173",process.env.FRONTEND,];
+const allowedOrigins = ["https://cloudvault-sage.vercel.app",process.env.FRONTEND,];
 const Tokens = {
     acessToken: process.env.ACCESS_TOKEN,
     accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY,

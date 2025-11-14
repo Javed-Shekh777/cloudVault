@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { SchemaName } = require('../constants');
 
 const fileSchema = new mongoose.Schema(
   {
@@ -9,7 +10,7 @@ const fileSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Cloudinary public ID (for delete/update)
+    // Cloudinary public ID
     public_id: {
       type: String,
       required: true,
@@ -17,22 +18,28 @@ const fileSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Full URL (Cloudinary or other CDN)
+    // Secure CDN URL
     secure_url: {
       type: String,
       required: true,
       trim: true,
     },
 
-    // File resource type: image, video, raw, pdf, gif, mp3, mp4, etc.
+    // Direct download URL (fl_attachment)
+    downloadUrl: {
+      type: String,
+      trim: true,
+    },
+
+    // Resource type
     resource_type: {
       type: String,
       required: true,
       enum: [
         'image',
         'video',
-        'raw',
         'audio',
+        'raw',
         'document',
         'gif',
         'pdf',
@@ -43,61 +50,47 @@ const fileSchema = new mongoose.Schema(
       default: 'other',
     },
 
-    // File format (jpg, png, mp4, mp3, pdf...)
+    // File format (jpg, mp4, pdf, etc.)
     format: {
       type: String,
       trim: true,
     },
 
     // File size in bytes
-    bytes: {
+    size: {
       type: Number,
+      required: true,
     },
 
-    // Optional: width/height (for images/videos)
-    width: Number,
-    height: Number,
+    // Dimensions (for images/videos)
+    width: { type: Number, default: 0 },
+    height: { type: Number, default: 0 },
 
-    // Duration for video/audio (in seconds)
-    duration: Number,
+    // Duration (for audio/video)
+    duration: { type: Number, default: 0 },
 
-    // Uploader reference (optional)
-    uploadedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
-    downloadUrl:{
-      type:String,
-      trim:true
-    },
+    // Folder reference
+    folder: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder },
 
-    // Tags or categories
-    tags: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    // Tags
+    tags: [{ type: String, trim: true }],
 
-    // Folder (like /profiles, /recipes, /uploads, etc.)
-    folder: {
-      type: String,
-      trim: true,
-    },
+    // Description/caption
+    description: { type: String, trim: true },
 
-    // Description or caption
-    description: {
-      type: String,
-      trim: true,
-    },
+    // Sharing
+    sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user }],
+
+    // Versioning
+    version: { type: Number, default: 1 },
+
+    // Uploader reference
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user },
 
     // Upload date
-    uploadedAt: {
-      type: Date,
-      default: Date.now,
-    },
+    uploadedAt: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  { timestamps: true } // adds createdAt & updatedAt automatically
 );
 
-module.exports = mongoose.model('File', fileSchema);
+module.exports = mongoose.model(SchemaName.file, fileSchema);

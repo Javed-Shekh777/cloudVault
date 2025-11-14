@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { uploadFile, getFiles, downloadFile, deleteFile } from "../api"; // adjust import path
+import { uploadFile, getFiles, downloadFile, deleteFile } from "../Api"; // adjust import path
 import Spinner from "../components/Spinner";
 
 import {
@@ -124,30 +124,6 @@ export default function FileManager() {
     // src/App.jsx (handleDownload function)
 
 
-    const handleDownload = async (file) => {
-        try {
-            // Axios call to backend download route
-            const response = await downloadFile(file._id);
-
-            // Create a Blob URL for the file
-            // const url = window.URL.createObjectURL(new Blob([response.data]));
-
-            // Create a temporary <a> tag to trigger download
-            const link = document.createElement("a");
-            link.href = response.data;
-            link.download = file.filename || "downloaded_file";
-            document.body.appendChild(link);
-            link.click();
-
-            // Cleanup
-            link.remove();
-
-            console.log("✅ File downloaded:", file.filename);
-        } catch (error) {
-            console.error("❌ Download failed:", error);
-            alert("Download failed! Please try again.");
-        }
-    };
 
 
 
