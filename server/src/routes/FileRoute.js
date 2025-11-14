@@ -5,7 +5,7 @@ const router = require('express').Router();
 
 
 router.route("/upload").post(upload.single('file'), uploadFile)
-router.route("/files").get(getAllFiles);
+router.route("/").get(getAllFiles);
 router.route("/delete/:id").delete(deleteFile);
 router.route("/download/:id").get(downloadFile);
 
