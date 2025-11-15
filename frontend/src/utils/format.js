@@ -5,7 +5,6 @@ export const formatBytes = (bytes) => {
   return `${(bytes / Math.pow(1024, i)).toFixed(i ? 1 : 0)} ${sizes[i]}`;
 };
 
-// new Date(it.updatedAt).toLocaleString()
 
 export const formatDate = (iso) => {
   const d = new Date(iso);

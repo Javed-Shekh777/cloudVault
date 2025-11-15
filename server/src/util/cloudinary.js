@@ -38,12 +38,15 @@ cloudinary.config(cloudinaryConfig);
 //   }
 // };
 
-const cloudinaryUpload = (buffer, folder, resourceType = "auto") => {
+const cloudinaryUpload = (buffer, options) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: resourceType },
+      options,
       (error, result) => {
-        if (error) reject(error);
+        if (error) {
+          console.error("Cloudinary stream error:", error.message); // Log the error
+          reject(error); // Explicitly reject the Promise
+        }
         else resolve(result);
       }
     );

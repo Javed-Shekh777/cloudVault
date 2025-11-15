@@ -6,14 +6,19 @@ import Starred from "../pages/Starred";
 import Search from "../pages/Search";
 import MyDrive from "../pages/MyDrive";
 import Recent from "../pages/Recent";
+import Login from "../pages/Login";
+import Register from "../pages/Register";
 
 const router = createBrowserRouter([
+  { path: "/login", element: <Login /> },
+  { path: "/register", element: <Register /> },
+
   {
     path: "/",
     element: <RootLayout />, // wraps header/sidebar
     children: [
-      { index: true, element: <MyDrive /> },     // "/" shows MyDrive
-      { path: "drive", element: <MyDrive /> },   // "/drive" also shows MyDrive
+      { index: true, element: <MyDrive /> },
+      { path: "drive", element: <MyDrive /> },
       { path: "shared", element: <Shared /> },
       { path: "trash", element: <Trash /> },
       { path: "starred", element: <Starred /> },

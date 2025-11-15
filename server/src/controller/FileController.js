@@ -1,55 +1,199 @@
 const { cloudinaryDelete, cloudinaryUpload } = require('../util/cloudinary');
 const File = require('../models/fileSchema');
 const { cloudinaryFolderNames } = require('../constants');
+const cloudinary = require("cloudinary").v2;
 
 // =========================
 // 📤 Upload File
 // =========================
-const uploadFile = async (req, res) => {
+
+
+// 2. Utility function to sanitize filenames for use in public_id
+const sanitizeFilename = (filename) => {
+  return filename
+    .replace(/\.[^/.]+$/, "") // Remove extension
+    .replace(/[^\w\s-]/g, '')  // Remove non-alphanumeric chars except space and hyphen
+    .replace(/\s+/g, '-')      // Replace spaces with hyphens
+    .toLowerCase();
+};
+
+
+
+// --- Main Controller Function ---
+
+const uploadFilesHandler = async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ success: false, error: 'No files provided' });
+  }
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No file provided' });
+    // Map over all files and upload them in parallel
+    const uploadedFilesData = await Promise.all(req.files.map(async (file) => {
+
+      // Determine resource type
+      let resourceType = 'raw';
+      if (file.mimetype.startsWith('image/')) {
+        resourceType = 'image';
+      } else if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) {
+        resourceType = 'video';
+      }
+
+      // Sanitize name and prepare IDs
+      const originalFilename = file.originalname;
+      const sanitizedName = sanitizeFilename(originalFilename);
+      const timestamp = Date.now();
+      const fileExtension = originalFilename.split('.').pop();
+      // Ensure public_id is clean and simple
+      const basePublicId = `${cloudinaryFolderNames.files}/${timestamp}-${sanitizedName}`;
+
+      const uploadOptions = {
+        folder: cloudinaryFolderNames.files,
+        resource_type: resourceType,
+        public_id: basePublicId,
+        format: fileExtension
+      };
+
+      let result;
+      try {
+        // Await the helper function call (this handles single file errors gracefully)
+        result = await cloudinaryUpload(file.buffer, uploadOptions);
+      } catch (uploadError) {
+        console.error(`❌ Failed to upload ${file.originalname}:`, uploadError.message);
+        return null; // Returning null here allows Promise.all to continue
+      }
+
+      if (!result) return null; // Skip DB entry if upload failed
+
+      // Generate download URL
+      const downloadUrl = cloudinary.url(result.public_id, {
+        resource_type: resourceType,
+        format: result.format,
+        fetch_format: result.format,
+        flags: ["attachment"],
+        sign_url: true
+      });
+
+      // Prepare data for Mongoose creation
+      return {
+        filename: originalFilename,
+        public_id: result.public_id,
+        secure_url: result.secure_url,
+        downloadUrl: downloadUrl,
+        resource_type: result.resource_type || 'other',
+        format: result?.format,
+        size: result.bytes,
+        width: result.width || 0,
+        height: result.height || 0,
+        duration: result.duration || 0,
+        folder: req.body.folder || null,
+        tags: req.body.tags || [],
+        description: req.body.description || "",
+        uploadedBy: req.user?._id || null,
+      };
+    }));
+
+    // Filter out any failed uploads (null values) from the array
+    const successfulUploadsData = uploadedFilesData.filter(item => item !== null);
+
+    if (successfulUploadsData.length === 0) {
+      return res.status(400).json({ success: false, message: "No files were successfully uploaded." });
     }
 
-    // Upload to Cloudinary
-    const result = await cloudinaryUpload(
-      req.file.buffer,
-      cloudinaryFolderNames.files
-    );
+    // Save successful files data to MongoDB
+    const createdFiles = await File.insertMany(successfulUploadsData);
 
-    const originalName = req.file.originalname;
-    const fileNameWithoutExt = originalName.replace(/\.[^/.]+$/, "");
-
-    // Build download URL (fl_attachment forces download)
-    const downloadUrl = result.secure_url.replace(
-      "/upload/",
-      `/upload/fl_attachment:${fileNameWithoutExt}`
-    );
-
-    // Save metadata in MongoDB (schema fields)
-    const file = await File.create({
-      filename: originalName,
-      public_id: result.public_id,
-      secure_url: result.secure_url,
-      downloadUrl,
-      resource_type: result.resource_type || 'other',
-      format: result.format,
-      size: result.bytes,              // ✅ schema expects "size"
-      width: result.width || 0,
-      height: result.height || 0,
-      duration: result.duration || 0,
-      folder: req.body.folder || null, // ✅ take from request if provided
-      tags: req.body.tags || [],       // ✅ custom tags
-      description: req.body.description || "",
-      uploadedBy: req.user?._id || null, // ✅ link to User if auth middleware
+    res.status(201).json({
+      success: true,
+      message: `${createdFiles.length} files uploaded successfully!`,
+      files: createdFiles
     });
 
-    res.status(201).json({ success: true, message: '✅ File uploaded successfully!', file });
   } catch (err) {
-    console.error('❌ Upload failed:', err);
-    res.status(500).json({ success: false, error: 'Upload failed', details: err.message });
+    // This general catch block handles other fatal errors (e.g., DB connection issues)
+    console.error('❌ General upload error:', err);
+    res.status(500).json({ success: false, error: 'Upload failed due to server error', details: err.message });
   }
 };
+
+
+
+
+// const uploadFilesHandler = async (req, res) => {
+//   try {
+//     // Multer array middleware req.files प्रदान करता है, req.file नहीं
+//     if (!req.files || req.files.length === 0) {
+//       return res.status(400).json({ success: false, error: 'कोई फ़ाइलें प्रदान नहीं की गईं' });
+//     }
+
+//     const uploadedFilesData = await Promise.all(req.files.map(async (file) => {
+//       let resourceType = 'raw';
+
+//       if (file.mimetype.startsWith('image/')) {
+//         resourceType = 'image';
+//       } else if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) {
+//         resourceType = 'video';
+//       }
+
+//       // public_id जनरेट करें जिसमें एक्सटेंशन शामिल हो ताकि डाउनलोड सही हो
+//       const publicIdWithExt = `${cloudinaryFolderNames.files}/${Date.now()}-${file.originalname}`;
+//       const fileExtension = file.originalname.split('.').pop();
+//       // const fileNameWithoutExt = file.originalname.replace(/\.[^/.]+$/, "");
+
+//       const uploadOptions = {
+//           folder: cloudinaryFolderNames.files,
+//           resource_type: resourceType,
+//           public_id: publicIdWithExt, 
+//           format: fileExtension 
+//       };
+
+//       // Cloudinary helper फ़ंक्शन का उपयोग करके अपलोड करें
+//       const result = await cloudinaryUpload(file.buffer, uploadOptions);
+
+//       // फ़ोर्स डाउनलोड के लिए downloadUrl जनरेट करें
+//       const downloadUrl = cloudinary.url(result?.public_id, {
+//           resource_type: resourceType,
+//           format: result.format,
+//           fetch_format: result.format,
+//           flags: ["attachment"],  
+//           sign_url: true  
+//       });
+
+//       // MongoDB में सहेजने के लिए डेटा तैयार करें
+//       return {
+//         filename: file.originalname,
+//         public_id: result.public_id,
+//         secure_url: result.secure_url,
+//         downloadUrl: downloadUrl,
+//         resource_type: result.resource_type || 'other',
+//         format: result.format,
+//         size: result.bytes,
+//         width: result.width || 0,
+//         height: result.height || 0,
+//         duration: result.duration || 0,
+//         folder: req.body?.folder || null, 
+//         tags: req.body.tags || [],
+//         description: req.body.description || "",
+//         uploadedBy: req.user?._id || null, 
+//       };
+//     }));
+
+//     // सभी फ़ाइलों का डेटाबेस में रिकॉर्ड बनाएं
+//     const createdFiles = await File.insertMany(uploadedFilesData);
+
+//     res.status(201).json({ 
+//         success: true, 
+//         message: `✅ ${createdFiles.length} uploaded`, 
+//         files: createdFiles 
+//     });
+
+//   } catch (err) {
+//     console.error('❌ failed to upload', err);
+//     res.status(500).json({ success: false, error: 'failed to upload', details: err.message });
+//   }
+// };
+
+
+
 
 // =========================
 // 📂 Get All Files
@@ -114,4 +258,4 @@ const deleteFile = async (req, res) => {
   }
 };
 
-module.exports = { uploadFile, getAllFiles, deleteFile, downloadFile };
+module.exports = { uploadFilesHandler, getAllFiles, deleteFile, downloadFile };

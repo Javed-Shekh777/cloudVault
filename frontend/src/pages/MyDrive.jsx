@@ -8,84 +8,153 @@ import Modal from "../components/Modal";
 import {
   useGetFilesQuery,
   useUploadFileMutation,
-  useDeleteFileMutation,
+
 } from "../redux/api";
+import { getFileType } from "../utils/fileTypes";
+import { useMemo } from "react";
+import UploadProgressMonitor from "../components/UploadProgressMonitor";
+import { uploadFileWithProgress } from "../Api";
+import { useEffect } from "react";
 
 export default function MyDrive() {
-  const { data, isLoading, error } = useGetFilesQuery();
+  const { data, isLoading, error, refetch } = useGetFilesQuery();
   const [uploadFile] = useUploadFileMutation();
-  const [deleteFile] = useDeleteFileMutation();
 
   const [view, setView] = useState("grid");
-  const [sort, setSort] = useState("name");
+  const [uploads, setUploads] = useState([]);
+  const [sortCriteria, setSortCriteria] = useState("name"); // Rename 'sort' to 'sortCriteria' for clarity
+  const [filterType, setFilterType] = useState("all"); // Use a separate state for filtering
   const [menu, setMenu] = useState(null);
   const [openNew, setOpenNew] = useState(false);
+  const isAnyUploading = uploads.some(upload => upload.status === 'uploading');
+  const isAnyFailed = uploads.some(upload => upload.status === 'failed');
 
-  // ✅ Access the array correctly
+
   const files = data?.files ?? [];
 
-  console.log("Files from API:", files);
+
+  // Use useMemo for efficient sorting and filtering
+  const sortedAndFilteredFiles = useMemo(() => {
+    let result = [...files];
+
+    console.log(filterType);
+    // --- 1. Apply Filtering ---
+    if (filterType !== "all") {
+      
+      result = result.filter(file => {console.log(getFileType(file)); return getFileType(file) === filterType});
+    }
+
+    // --- 2. Apply Sorting ---
+    result.sort((a, b) => {
+      if (sortCriteria === "name") {
+        return (a.filename || "").localeCompare(b.filename || "");
+      }
+      if (sortCriteria === "updatedAt") {
+        // Sort newest first (descending)
+        return new Date(b.updatedAt || b.created_at) - new Date(a.updatedAt || a.created_at);
+      }
+      if (sortCriteria === "createdAt") { // Added creation time sorting
+        return new Date(b.created_at) - new Date(a.created_at);
+      }
+      if (sortCriteria === "size") {
+        // Sort largest first (descending)
+        return (b.size || 0) - (a.size || 0); // Use 'size' field from DB
+      }
+      if (sortCriteria === "size-asc") { // Added size ascending sort
+        return (a.size || 0) - (b.size || 0);
+      }
+      // Add other sort criteria here as needed
+
+      return 0; // Default case
+    });
+
+    return result;
+  }, [files, sortCriteria, filterType]);
+
+  useEffect(() => {
+    if (isAnyUploading || uploads.length === 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleCloseMonitor();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isAnyUploading, uploads.length]);
 
 
-  let sorted = [...files];
+  const handleFileSelect = async (e) => {
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length === 0) return;
 
-// 1) VIDEO filter pehle apply karo
-if (sort === "video") {
-  const videoTypes = ["mp4", "mov", "avi", "mkv"];
-  sorted = sorted.filter(f => videoTypes.includes(f?.format));
-}
+    // 1. Initialize upload status for *each* file
+    const newUploads = selectedFiles.map(file => ({
+      id: `${file.name}-${Date.now()}`, // Unique ID for tracking
+      fileName: file.name,
+      status: 'uploading',
+      progress: 0,
+    }));
 
-if (sort === "audio") {
-  const videoTypes = ["mp3", "mov", "avi", "mkv"];
-  sorted = sorted.filter(f => videoTypes.includes(f?.format));
-}
+    setUploads(prev => [...prev, ...newUploads]);
 
-if (sort === "pdf") {
-  const videoTypes = ["pdf", "mov", "avi", "mkv"];
-  sorted = sorted.filter(f => videoTypes.includes(f?.format));
-}
+    // 2. Upload *each* file individually using Axios with progress tracking
+    selectedFiles.forEach(file => {
+      // We use the file name as a temporary identifier for state updates
+      const fileNameIdentifier = file.name;
+
+      // Call the custom axios function with a progress callback
+      uploadFileWithProgress(file, (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+
+        // Update the specific file's progress in the state
+        setUploads(prev => prev.map(upload => {
+          if (upload.fileName === fileNameIdentifier && upload.status === 'uploading') {
+            return { ...upload, progress: percentCompleted };
+          }
+          return upload;
+        }));
+      })
+        .then(response => {
+          // Success: update status to 'completed'
+          setUploads(prev => prev.map(upload => {
+            if (upload.fileName === fileNameIdentifier) {
+              return { ...upload, status: 'completed', progress: 100 };
+            }
+            return upload;
+          }));
+          // After successful uploads, refetch the file list to show new files
+          refetch();
+        })
+        .catch(error => {
+          // Failure: update status to 'failed'
+          console.error(`Upload failed for ${fileNameIdentifier}:`, error);
+          setUploads(prev => prev.map(upload => {
+            if (upload.fileName === fileNameIdentifier) {
+              return { ...upload, status: 'failed' };
+            }
+            return upload;
+          }));
+        });
+    });
+
+    // 3. Optional cleanup of completed uploads after a short delay
+    setTimeout(() => {
+      setUploads(prev => prev.filter(upload => upload.status === 'uploading'));
+    }, 5000);
+  };
 
 
-if (sort === "image") {
-  const videoTypes = ["jpeg", "jpg", "png"];
-  sorted = sorted.filter(f => videoTypes.includes(f?.format));
-}
+  const handleCloseMonitor = () => {
+    if (isAnyUploading) {
+      alert("Uploads are still in progress. Please wait.");
+      return;
+    }
 
-// 2) Baaki sorts normal tarah chalein
-sorted = sorted.sort((a, b) => {
-  if (sort === "name") {
-    return (a.filename || "").localeCompare(b.filename || "");
-  }
-  if (sort === "updatedAt") {
-    return new Date(b.updatedAt) - new Date(a.updatedAt);
-  }
-  if (sort === "size") {
-    return (b.bytes || 0) - (a.bytes || 0);
-  }
-  
-  return 0;
-});
+    setUploads([]);
+  };
 
-
-  // const sorted = [...files].sort((a, b) => {
-  //   console.log(sort);
-  //   if (sort === "name") {
-  //     return (a.filename || "").localeCompare(b.filename || "");
-  //   }
-  //   if (sort === "updatedAt") {
-  //     return new Date(b.updatedAt) - new Date(a.updatedAt);
-  //   }
-  //   if (sort === "size") {
-  //     return (b.bytes || 0) - (a.bytes || 0);
-  //   }
-  //   if (sort === "video") {
-  //     const videoTypes = ["mp4", "mov", "avi", "mkv"];
-  //     sorted = [...files].filter(f => videoTypes.includes(f?.format));
-  //   }
-
-  //   return 0;
-  // });
-
+  console.log(files);
 
   if (isLoading) return <p>Loading files...</p>;
   if (error) return <p>Error loading files</p>;
@@ -93,15 +162,19 @@ sorted = sorted.sort((a, b) => {
   return (
     <div className="space-y-4">
       <Breadcrumbs path={[{ name: "My Drive", to: "/drive" }]} />
+
       <Toolbar
         onNew={() => setOpenNew(true)}
         view={view}
         setView={setView}
-        sort={sort}
-        setSort={setSort}
+        sortCriteria={sortCriteria}
+        setSortCriteria={setSortCriteria}
+        filterType={filterType}
+        setFilterType={setFilterType}
       />
+
       <FileGrid
-        items={sorted}
+        items={sortedAndFilteredFiles}
         view={view}
         onContext={(e, it) => {
           e.preventDefault();
@@ -113,12 +186,12 @@ sorted = sorted.sort((a, b) => {
         onClick={() => {
           const input = document.createElement("input");
           input.type = "file";
-          input.onchange = (e) => {
-            if (e.target.files[0]) uploadFile(e.target.files[0]);
-          };
+          input.multiple = true; // <-- यह ज़रूरी है: मल्टीप्ल सेलेक्शन सक्षम करता है
+          input.onchange = handleFileSelect; // <-- हैंडलर को बदलें
           input.click();
         }}
       />
+      <UploadProgressMonitor uploads={uploads} onCloseMonitor={handleCloseMonitor} />
       {menu && (
         <ContextMenu
           x={menu.x}

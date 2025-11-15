@@ -52,7 +52,7 @@ export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
       {items.map(it => (
         <div
-          key={it.id}
+          key={it._id}
           className={`card p-3 cursor-pointer ${selected.has(it.id) ? "ring-2 ring-brand-500" : ""}`}
           onClick={(e) => toggle(it.id, e.shiftKey || e.ctrlKey || e.metaKey)}
           onDoubleClick={() => onOpen?.(it)}

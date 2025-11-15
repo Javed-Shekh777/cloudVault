@@ -1,10 +1,27 @@
+// redux/apiSlice.js (Assuming this path)
+
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+
+// Define the custom baseQuery function
+const baseQuery = fetchBaseQuery({
+  baseUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api/v1',
+  prepareHeaders: (headers, { getState }) => {
+    // Access the token from your auth slice in the Redux store
+    // Ensure you have an 'auth' slice with a 'token' field
+    const token = getState().auth?.token; 
+
+    if (token) {
+      // Set the authorization header for every request
+      headers.set('authorization', `Bearer ${token}`);
+    }
+    // RTK Query handles the Content-Type for FormData automatically
+    return headers;
+  },
+});
 
 export const driveApi = createApi({
   reducerPath: 'driveApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080',
-  }),
+  baseQuery: baseQuery, // Use the customized baseQuery
   tagTypes: ['File'],
   endpoints: (builder) => ({
     // GET /files
@@ -13,31 +30,37 @@ export const driveApi = createApi({
       providesTags: ['File'],
     }),
 
-    // POST /upload
+    // POST /files/upload
     uploadFile: builder.mutation({
-      query: (file) => {
+      // Receives an array of File objects
+      query: (filesArray) => { 
         const formData = new FormData();
-        formData.append('file', file);
+        
+        // Append all files to the 'files' key (as required by the backend)
+        filesArray.forEach(file => {
+          formData.append('files', file);
+        });
+
         return {
-          url: '/upload',
+          url: '/files/upload',
           method: 'POST',
-          body: formData,
+          body: formData, // FormData is handled correctly by fetchBaseQuery
         };
       },
-      invalidatesTags: ['File'],
+      // Note: Invalidating tags AFTER the upload is complete is crucial
+      invalidatesTags: ['File'], 
     }),
 
-    // GET /download/:id
+    // GET /files/download/:id
     downloadFile: builder.query({
-      query: (id) => `/download/${id}`,
+      query: (id) => `/files/download/${id}`,
     }),
 
-    // DELETE /delete/:id
+    // DELETE /files/delete/:id
     deleteFile: builder.mutation({
       query: (id) => {
-        console.log("Deleting file with id:", id); // ✅ safe to log here
         return {
-          url: `/delete/${id}`,
+          url: `/files/delete/${id}`,
           method: 'DELETE',
         };
       },
