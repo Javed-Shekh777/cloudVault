@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { uploadFile, getFiles, downloadFile, deleteFile } from "../Api"; // adjust import path
+import { uploadFile, getFiles, downloadFile, deleteFile } from "../services/api"; // adjust import path
 import Spinner from "../components/Spinner";
 
 import {

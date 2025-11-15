@@ -13,7 +13,7 @@ import {
 import { getFileType } from "../utils/fileTypes";
 import { useMemo } from "react";
 import UploadProgressMonitor from "../components/UploadProgressMonitor";
-import { uploadFileWithProgress } from "../Api";
+import { uploadFileWithProgress } from "../services/api";
 import { useEffect } from "react";
 
 export default function MyDrive() {
