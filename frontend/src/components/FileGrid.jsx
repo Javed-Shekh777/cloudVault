@@ -1,5 +1,6 @@
 import { useState } from "react";
 import FileCard from "./FileCard.jsx";
+import { formatBytes, formatDate } from "../utils/format.js";
 
 export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
   const [selected, setSelected] = useState(new Set());
@@ -17,14 +18,14 @@ export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
 
   if (view === "list") {
     return (
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto w-screen">
+        <table className="w-full text-sm table-auto">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
               <th className="text-left px-4 py-2">Name</th>
               <th className="text-left px-4 py-2">Owner</th>
               <th className="text-left px-4 py-2">Last modified</th>
-              <th className="text-left px-4 py-2">File size</th>
+              <th className="text-left px-4 py-2 whitespace-nowrap">File size</th>
             </tr>
           </thead>
           <tbody>
@@ -48,6 +49,8 @@ export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
     );
   }
 
+
+  
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
       {items.map(it => (

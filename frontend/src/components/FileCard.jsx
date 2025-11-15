@@ -18,7 +18,7 @@ export default function FileCard({ item, compact = false }) {
     </div>
   ) : (
     // Card View
-    <div className="flex flex-col gap-3 p-4 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-150 bg-white">
+    <div className="flex flex-col gap-3 sm:p-4 p-2.5 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-150 bg-white">
       {item.resource_type === 'image' && item.secure_url ? ( // Use secure_url for preview
         <img 
           src={item.secure_url} 

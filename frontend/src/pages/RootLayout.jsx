@@ -11,7 +11,7 @@ export default function RootLayout() {
       <Header open={open} setOpen={setOpen} />
       <div className="flex flex-1">
         <Sidebar open={open} setOpen={setOpen} />
-        <main className="flex-1 p-4">
+        <main className="flex-1 sm:p-4 p-2">
           <Outlet />
         </main>
       </div>
