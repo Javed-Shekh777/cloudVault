@@ -1,9 +1,11 @@
 import { useState } from "react";
 import FileCard from "./FileCard.jsx";
 import { formatBytes, formatDate } from "../utils/format.js";
+ 
 
-export default function FileGrid({ items, view = "grid", onOpen, onContext,handleStared }) {
+export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
   const [selected, setSelected] = useState(new Set());
+ 
 
   const toggle = (id, multi) => {
     setSelected(prev => {
@@ -63,7 +65,7 @@ export default function FileGrid({ items, view = "grid", onOpen, onContext,handl
           onDoubleClick={() => onOpen?.(it)}
           onContextMenu={(e) => { e.preventDefault(); onContext?.(e, it, () => setSelected(new Set())); }}
         >
-          <FileCard item={it} handleStared={handleStared} />
+          <FileCard item={it}  />
         </div>
       ))}
     </div>

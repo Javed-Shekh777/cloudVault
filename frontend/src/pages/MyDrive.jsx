@@ -6,10 +6,8 @@ import UploadFab from "../components/UploadFab";
 import ContextMenu from "../components/ContextMenu";
 import Modal from "../components/Modal";
 import {
-
   useGetFilesQuery,
   useUploadFileMutation,
-  useAddRemoveStarMutation
 
 } from "../redux/api";
 import { getFileType } from "../utils/fileTypes";
@@ -35,7 +33,7 @@ export default function MyDrive() {
   const isAnyFailed = uploads.some(upload => upload.status === 'failed');
 
 
-  const files = data?.files ?? [];
+  const files = data?.files?.filter(f=>f?.isDeleted === false) ?? [];
 
 
   // Use useMemo for efficient sorting and filtering
@@ -149,18 +147,7 @@ export default function MyDrive() {
     }, 5000);
   };
 
-  const [toggleStar, { isError }] = useAddRemoveStarMutation();
-
-  // Function to call when a star button is clicked
-  const handleStared = async (fileId) => {
-    try {
-      await toggleStar(fileId).unwrap();
-      // Handle success (e.g., show a toast notification)
-    } catch (error) {
-      // Handle error
-      console.log(error);
-    }
-  };
+  
 
 
 
@@ -200,7 +187,6 @@ export default function MyDrive() {
       <FileGrid
         items={sortedAndFilteredFiles}
         view={view}
-        handleStared={handleStared}
         onContext={(e, it) => {
           e.preventDefault();
           setMenu({ x: e.clientX, y: e.clientY, item: it });

@@ -16,6 +16,15 @@ export const formatDate = (iso) => {
 };
 
 
+export const handleToggleFunc = async (fileId,func) => {
+    try {
+        await func(fileId).unwrap();
+        // Handle success (e.g., show a toast notification)
+    } catch (error) {
+        // Handle error
+        console.log(error);
+    }
+};
 
 // export const formatDateTime = (iso) => {
 //   const d = new Date(iso);

@@ -7,12 +7,15 @@ import {
   MdDownload,
   MdEdit,
 } from "react-icons/md";
-import { useDeleteFileMutation, useToggleTrashStatusMutation } from "../redux/api";
+import { useDeleteFileMutation,useToggleTrashStatusMutation } from "../redux/api";
 import { useRef } from "react";
+import { handleToggleFunc } from "../utils/format";
 
 export default function ContextMenu({ x, y, item, onClose }) {
   console.log(item);
   const [deleteFile] = useDeleteFileMutation();
+  const [toggleTrash] = useToggleTrashStatusMutation();
+
 
   const ref = useRef(null);
 
@@ -21,19 +24,9 @@ export default function ContextMenu({ x, y, item, onClose }) {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [onClose]);
-  const [toggleTrash, { isError }] = useToggleTrashStatusMutation();
 
-  // Function to call when a star button is clicked
-  const handleTrash = async (fileId) => {
-    try {
-      await toggleTrash(fileId).unwrap();
-      // Handle success (e.g., show a toast notification)
-    } catch (error) {
-      // Handle error
-      console.log(error);
-    }
-  };
-
+ 
+  
 
 
   const handleDownload = async (file) => {
@@ -75,7 +68,7 @@ export default function ContextMenu({ x, y, item, onClose }) {
         icon={MdDelete}
         label="Trash"
         onClick={() => {
-          handleTrash(item?._id); // ✅ mutation call
+          handleToggleFunc(item?._id,toggleTrash); // ✅ mutation call
           onClose();                  // ✅ फिर menu बंद
         }}
       />
