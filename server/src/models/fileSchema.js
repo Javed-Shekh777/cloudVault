@@ -31,6 +31,8 @@ const fileSchema = new mongoose.Schema(
       trim: true,
     },
 
+
+
     // Resource type
     resource_type: {
       type: String,
@@ -89,6 +91,18 @@ const fileSchema = new mongoose.Schema(
 
     // Upload date
     uploadedAt: { type: Date, default: Date.now },
+
+
+    isFavourite: { type: Boolean, default: false },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true
+    },
+    deletedAt: {
+      type: Date,
+      default: null
+    }
   },
   { timestamps: true } // adds createdAt & updatedAt automatically
 );

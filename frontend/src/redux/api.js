@@ -8,7 +8,7 @@ const baseQuery = fetchBaseQuery({
   prepareHeaders: (headers, { getState }) => {
     // Access the token from your auth slice in the Redux store
     // Ensure you have an 'auth' slice with a 'token' field
-    const token = getState().auth?.token; 
+    const token = getState().auth?.token;
 
     if (token) {
       // Set the authorization header for every request
@@ -29,13 +29,17 @@ export const driveApi = createApi({
       query: () => '/files',
       providesTags: ['File'],
     }),
+    getStaredFiles: builder.query({
+      query: () => '/files/stared-files',
+      providesTags: ['File'],
+    }),
 
     // POST /files/upload
     uploadFile: builder.mutation({
       // Receives an array of File objects
-      query: (filesArray) => { 
+      query: (filesArray) => {
         const formData = new FormData();
-        
+
         // Append all files to the 'files' key (as required by the backend)
         filesArray.forEach(file => {
           formData.append('files', file);
@@ -48,13 +52,31 @@ export const driveApi = createApi({
         };
       },
       // Note: Invalidating tags AFTER the upload is complete is crucial
-      invalidatesTags: ['File'], 
+      invalidatesTags: ['File'],
+    }),
+     addRemoveStar: builder.mutation({
+      query: (id) => ({
+        url: `/files/add-remove-star/${id}`,
+        method: 'PATCH', // Use PATCH or PUT for updates
+      }),
+      // Optional: use invalidatesTags to refetch relevant lists after mutation
+      invalidatesTags: ['Files'], 
+    }),
+
+    toggleTrashStatus: builder.mutation({
+      query: (id) => ({
+        url: `/files/add-remove-trash/${id}`,
+        method: 'PATCH', // Use PATCH or PUT for updates
+      }),
+      invalidatesTags: ['Files'], 
     }),
 
     // GET /files/download/:id
     downloadFile: builder.query({
       query: (id) => `/files/download/${id}`,
     }),
+
+    
 
     // DELETE /files/delete/:id
     deleteFile: builder.mutation({
@@ -66,12 +88,17 @@ export const driveApi = createApi({
       },
       invalidatesTags: ['File'],
     }),
+    
   }),
 });
 
 export const {
   useGetFilesQuery,
+  useGetStaredFilesQuery,
   useUploadFileMutation,
   useDownloadFileQuery,
+  useAddRemoveStarMutation ,
+  useToggleTrashStatusMutation ,
   useDeleteFileMutation,
+
 } = driveApi;

@@ -258,4 +258,89 @@ const deleteFile = async (req, res) => {
   }
 };
 
-module.exports = { uploadFilesHandler, getAllFiles, deleteFile, downloadFile };
+
+const getStarredFiles = async (req, res) => {
+  try {
+    const files = await File.find({ isFavourite: true }).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      count: files.length,
+      files,
+    });
+  } catch (err) {
+    console.error("❌ Fetch files error:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch files" });
+  }
+};
+
+const addRemoveStarred = async (req, res) => {
+  try {
+
+    console.log('fdfd');
+    const id = req?.params?.id || req?.body?.id;
+
+    if (!id) {
+      res.status(400).json({ success: false, error: "File is required." });
+
+    }
+    console.log('fdfd', id);
+
+
+    const file = await File.findById(id)
+
+    if (!file) {
+      res.status(400).json({ success: false, error: "File not found." });
+    }
+
+    file.isFavourite = !file.isFavourite;
+
+    await file.save();
+
+    console.log(file);
+
+    res.status(200).json({
+      success: true,
+      message: file.isDeleted ? "File added to favourite" : "File remoed from favourite",
+      isFavourite: file?.isFavourite,
+      fileId: file._id
+    });
+  } catch (err) {
+    console.error("❌ Fetch files error:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch files" });
+  }
+};
+
+
+const toggleTrashStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ success: false, error: "File ID is required." });
+    }
+
+    const file = await File.findById(id);
+
+    if (!file) {
+      return res.status(404).json({ success: false, error: "File not found." });
+    }
+    file.isDeleted = !file.isDeleted;
+
+    await file.save();
+
+
+    res.status(200).json({
+      success: true,
+      message: file.isDeleted ? "File moved to trash" : "File restored from trash",
+      isDeleted: file.isDeleted,
+      fileId: file._id
+    });
+
+  } catch (err) {
+    console.error("❌ Toggle trash status error:", err);
+    res.status(500).json({ success: false, error: "Failed to update file status" });
+  }
+};
+
+
+module.exports = { uploadFilesHandler, getAllFiles, deleteFile, downloadFile, getStarredFiles, addRemoveStarred, toggleTrashStatus };

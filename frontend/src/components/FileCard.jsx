@@ -5,14 +5,14 @@ import { MdStarBorder, MdStar } from "react-icons/md";
 import { typeIcon, typeColor } from "../utils/fileTypes.js"; 
 import { formatBytes, formatDate } from "../utils/format.js";
 
-export default function FileCard({ item, compact = false }) {
+export default function FileCard({ item, compact = false ,handleStared}) {
   // Pass item.format to the utility functions
   const Icon = typeIcon(item);
   const colorClass = typeColor(item); // Get the color class once
 
   return compact ? (
     // Compact View
-    <div className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer">
+    <div className="flex items-center gap-3 p-2 hover:bg-gray-100 rounded-md cursor-pointer">
       <Icon className={`text-xl ${colorClass}`} /> {/* Apply color and size */}
       <span className="text-gray-900 truncate">{item.filename}</span>
     </div>
@@ -44,9 +44,9 @@ export default function FileCard({ item, compact = false }) {
         </div>
         
         {/* Star Button */}
-        <button className="btn-ghost p-1 rounded-full hover:bg-gray-100 transition duration-150" title={item.starred ? "Unstar" : "Star"}>
+        <button type="button" onClick={()=>handleStared(item?._id)} className="btn-ghost p-1 rounded-full hover:bg-gray-100 transition duration-150" title={item.starred ? "Unstar" : "Star"}>
           {/* Assuming 'starred' field exists in your DB model */}
-          {item.starred ? <MdStar className="text-yellow-500 text-xl" /> : <MdStarBorder className="text-gray-500 text-xl" />}
+          {item?.isFavourite ? <MdStar className="text-yellow-500 text-xl" /> : <MdStarBorder className="text-gray-500 text-xl" />}
         </button>
       </div>
     </div>

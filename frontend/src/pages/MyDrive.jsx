@@ -6,8 +6,10 @@ import UploadFab from "../components/UploadFab";
 import ContextMenu from "../components/ContextMenu";
 import Modal from "../components/Modal";
 import {
+
   useGetFilesQuery,
   useUploadFileMutation,
+  useAddRemoveStarMutation
 
 } from "../redux/api";
 import { getFileType } from "../utils/fileTypes";
@@ -15,10 +17,13 @@ import { useMemo } from "react";
 import UploadProgressMonitor from "../components/UploadProgressMonitor";
 import { uploadFileWithProgress } from "../services/api";
 import { useEffect } from "react";
+import Spinner from "../components/Spinner";
 
 export default function MyDrive() {
   const { data, isLoading, error, refetch } = useGetFilesQuery();
+
   const [uploadFile] = useUploadFileMutation();
+
 
   const [view, setView] = useState("grid");
   const [uploads, setUploads] = useState([]);
@@ -40,8 +45,8 @@ export default function MyDrive() {
     console.log(filterType);
     // --- 1. Apply Filtering ---
     if (filterType !== "all") {
-      
-      result = result.filter(file => {console.log(getFileType(file)); return getFileType(file) === filterType});
+
+      result = result.filter(file => { console.log(getFileType(file)); return getFileType(file) === filterType });
     }
 
     // --- 2. Apply Sorting ---
@@ -144,6 +149,23 @@ export default function MyDrive() {
     }, 5000);
   };
 
+  const [toggleStar, { isError }] = useAddRemoveStarMutation();
+
+  // Function to call when a star button is clicked
+  const handleStared = async (fileId) => {
+    try {
+      await toggleStar(fileId).unwrap();
+      // Handle success (e.g., show a toast notification)
+    } catch (error) {
+      // Handle error
+      console.log(error);
+    }
+  };
+
+
+
+
+
 
   const handleCloseMonitor = () => {
     if (isAnyUploading) {
@@ -155,9 +177,11 @@ export default function MyDrive() {
   };
 
   console.log(files);
+  if (isLoading) return <Spinner height="h-20" width="h-20" color = "text-green-500" />;
 
-  if (isLoading) return <p>Loading files...</p>;
-  if (error) return <p>Error loading files</p>;
+
+  if (error) return `Error loading files ${JSON.stringify(error)}`;
+
 
   return (
     <div className="space-y-4">
@@ -176,6 +200,7 @@ export default function MyDrive() {
       <FileGrid
         items={sortedAndFilteredFiles}
         view={view}
+        handleStared={handleStared}
         onContext={(e, it) => {
           e.preventDefault();
           setMenu({ x: e.clientX, y: e.clientY, item: it });

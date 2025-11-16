@@ -7,12 +7,13 @@ import {
   MdDownload,
   MdEdit,
 } from "react-icons/md";
-import { useDeleteFileMutation } from "../redux/api";
+import { useDeleteFileMutation, useToggleTrashStatusMutation } from "../redux/api";
 import { useRef } from "react";
 
 export default function ContextMenu({ x, y, item, onClose }) {
   console.log(item);
   const [deleteFile] = useDeleteFileMutation();
+
   const ref = useRef(null);
 
   useEffect(() => {
@@ -20,12 +21,18 @@ export default function ContextMenu({ x, y, item, onClose }) {
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [onClose]);
+  const [toggleTrash, { isError }] = useToggleTrashStatusMutation();
 
-  // useEffect(() => {
-  //   const onDoc = (e) => onClose?.();
-  //   document.addEventListener("mousedown", onDoc);
-  //   return () => document.removeEventListener("mousedown", onDoc);
-  // }, [onClose]);
+  // Function to call when a star button is clicked
+  const handleTrash = async (fileId) => {
+    try {
+      await toggleTrash(fileId).unwrap();
+      // Handle success (e.g., show a toast notification)
+    } catch (error) {
+      // Handle error
+      console.log(error);
+    }
+  };
 
 
 
@@ -63,6 +70,14 @@ export default function ContextMenu({ x, y, item, onClose }) {
         icon={MdEdit}
         label="Rename"
         onClick={() => console.log("Rename:", item)}
+      />
+      <MenuItem
+        icon={MdDelete}
+        label="Trash"
+        onClick={() => {
+          handleTrash(item?._id); // ✅ mutation call
+          onClose();                  // ✅ फिर menu बंद
+        }}
       />
       <MenuItem
         icon={MdDriveFileMove}

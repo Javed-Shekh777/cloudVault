@@ -9,7 +9,7 @@ export default function ViewToggle({ view, setView, icons }) {
         <GridIcon />
       </button>
       <button
-        className={`px-3 py-2 text-sm ${view === "list" ? "bg-gray-100" : ""}`}
+        className={`px-3 sm:block hidden py-2 text-sm ${view === "list" ? "bg-gray-100" : ""}`}
         onClick={() => setView("list")}
       >
         <ListIcon />

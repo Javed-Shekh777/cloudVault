@@ -2,7 +2,7 @@ import { useState } from "react";
 import FileCard from "./FileCard.jsx";
 import { formatBytes, formatDate } from "../utils/format.js";
 
-export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
+export default function FileGrid({ items, view = "grid", onOpen, onContext,handleStared }) {
   const [selected, setSelected] = useState(new Set());
 
   const toggle = (id, multi) => {
@@ -18,8 +18,8 @@ export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
 
   if (view === "list") {
     return (
-      <div className="card overflow-x-auto w-screen">
-        <table className="w-full text-sm table-auto">
+      <div className="card  ">
+        <table className="w-full text-sm  overflow-x-auto">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
               <th className="text-left px-4 py-2">Name</th>
@@ -56,12 +56,14 @@ export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
       {items.map(it => (
         <div
           key={it._id}
-          className={`card p-3 cursor-pointer ${selected.has(it.id) ? "ring-2 ring-brand-500" : ""}`}
+          // className={`card p-3 cursor-pointer ${selected.has(it.id) ? "ring-2 ring-brand-500" : ""}`}
+          className={`card p-3 cursor-pointer }`}
+
           onClick={(e) => toggle(it.id, e.shiftKey || e.ctrlKey || e.metaKey)}
           onDoubleClick={() => onOpen?.(it)}
           onContextMenu={(e) => { e.preventDefault(); onContext?.(e, it, () => setSelected(new Set())); }}
         >
-          <FileCard item={it} />
+          <FileCard item={it} handleStared={handleStared} />
         </div>
       ))}
     </div>
