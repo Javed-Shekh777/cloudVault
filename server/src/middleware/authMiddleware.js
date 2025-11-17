@@ -23,7 +23,7 @@ const authenticated = async (req, res, next) => {
     // Verify JWT
     let decoded;
     try {
-      decoded = jwt.verify(token, Tokens.accessToken); // ✅ fix typo
+      decoded = jwt.verify(token, Tokens.acessToken); // ✅ fix typo
     } catch (err) {
       return res
         .status(401)
