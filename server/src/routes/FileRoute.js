@@ -4,7 +4,7 @@ const authenticated = require("../middleware/authMiddleware");
 const router = require('express').Router();
 
 
-router.route("/upload").post(upload.array('files', 10), uploadFilesHandler)
+router.route("/upload").post(authenticated,upload.array('files', 10), uploadFilesHandler)
 router.route("/").get(authenticated, getAllFiles);
 router.route("/stared-files").get(authenticated, getStarredFiles);
 router.route("/delete/:id").delete(authenticated, deleteFile);

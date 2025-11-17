@@ -44,7 +44,7 @@ const uploadFilesHandler = async (req, res) => {
       const timestamp = Date.now();
       const fileExtension = originalFilename.split('.').pop();
       // Ensure public_id is clean and simple
-      const basePublicId = `${cloudinaryFolderNames.files}/${timestamp}-${sanitizedName}`;
+      const basePublicId = `${timestamp}-${sanitizedName}`;
 
       const uploadOptions = {
         folder: cloudinaryFolderNames.files,

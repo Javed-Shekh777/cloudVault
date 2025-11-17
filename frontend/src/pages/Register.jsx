@@ -48,11 +48,13 @@ export default function Register() {
         email: form.email,
         password: form.password,
       }).unwrap();
-      dispatch(setCredentials({ user: res.user, token: res?.token }));
+
+      console.log(res);
+      // dispatch(setCredentials({ user: res.user, token: res?.token }));
 
 
       // redirect to dashboard
-      window.location.href = "/";
+      window.location.href = "/login";
     } catch (err) {
       console.log(err);
       setErrors({ api: err.data?.error || "Registration failed" });
