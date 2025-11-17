@@ -8,22 +8,31 @@ import MyDrive from "../pages/MyDrive";
 import Recent from "../pages/Recent";
 import Login from "../pages/Login";
 import Register from "../pages/Register";
+import ProtectedRoute from "../components/ProtectedRoute";
+import Profile from "../pages/Profile";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
   { path: "/register", element: <Register /> },
 
   {
-    path: "/",
-    element: <RootLayout />, // wraps header/sidebar
+    element: <ProtectedRoute />, // ✅ protect everything inside
     children: [
-      { index: true, element: <MyDrive /> },
-      { path: "drive", element: <MyDrive /> },
-      { path: "shared", element: <Shared /> },
-      { path: "trash", element: <Trash /> },
-      { path: "starred", element: <Starred /> },
-      { path: "search", element: <Search /> },
-      { path: "recent", element: <Recent /> },
+      {
+        path: "/",
+        element: <RootLayout />,
+        children: [
+          { index: true, element: <MyDrive /> },
+          { path: "drive", element: <MyDrive /> },
+          { path: "shared", element: <Shared /> },
+          { path: "trash", element: <Trash /> },
+          { path: "starred", element: <Starred /> },
+          { path: "search", element: <Search /> },
+          { path: "recent", element: <Recent /> },
+          { path: "profile", element: <Profile /> },
+
+        ],
+      },
     ],
   },
 ]);

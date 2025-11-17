@@ -11,7 +11,7 @@ const SchemaName = {
 const cloudinaryFolderNames = {
     files: `${process.env.CLOUDINARY_FOLDER_NAME}/files`,
     // videos: `${process.env.CLOUDINARY_FOLDER_NAME}/videos`,
-    // images: `${process.env.CLOUDINARY_FOLDER_NAME}/images`,
+    profiles: `${process.env.CLOUDINARY_FOLDER_NAME}/profiles`,
 };
 
 const cloudinaryConfig = {
@@ -32,6 +32,7 @@ const MONGODB_URL =
 
 const PORT = process.env.PORT;
 const allowedOrigins = ["https://cloudvault-sage.vercel.app",process.env.FRONTEND,];
+
 const Tokens = {
     acessToken: process.env.ACCESS_TOKEN,
     accessTokenExpiry: process.env.ACCESS_TOKEN_EXPIRY,

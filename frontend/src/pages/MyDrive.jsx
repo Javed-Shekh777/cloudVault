@@ -15,7 +15,7 @@ import { useMemo } from "react";
 import UploadProgressMonitor from "../components/UploadProgressMonitor";
 import { uploadFileWithProgress } from "../services/api";
 import { useEffect } from "react";
-import Spinner from "../components/Spinner";
+import { Spinner } from "../components/Spinner";
 
 export default function MyDrive() {
   const { data, isLoading, error, refetch } = useGetFilesQuery();
@@ -33,7 +33,7 @@ export default function MyDrive() {
   const isAnyFailed = uploads.some(upload => upload.status === 'failed');
 
 
-  const files = data?.files?.filter(f=>f?.isDeleted === false) ?? [];
+  const files = data?.files?.filter(f=>!f.isDeleted) ?? [];
 
 
   // Use useMemo for efficient sorting and filtering
@@ -149,11 +149,6 @@ export default function MyDrive() {
 
   
 
-
-
-
-
-
   const handleCloseMonitor = () => {
     if (isAnyUploading) {
       alert("Uploads are still in progress. Please wait.");
@@ -164,7 +159,7 @@ export default function MyDrive() {
   };
 
   console.log(files);
-  if (isLoading) return <Spinner height="h-20" width="h-20" color = "text-green-500" />;
+  if (isLoading) return <Spinner size="h-20 w-20" color = "text-green-500" />;
 
 
   if (error) return `Error loading files ${JSON.stringify(error)}`;
@@ -202,7 +197,6 @@ export default function MyDrive() {
           input.click();
         }}
       />
-      <UploadProgressMonitor uploads={uploads} onCloseMonitor={handleCloseMonitor} />
       {menu && (
         <ContextMenu
           x={menu.x}
@@ -228,6 +222,8 @@ export default function MyDrive() {
       >
         Choose to create a folder or upload files.
       </Modal>
+      <UploadProgressMonitor uploads={uploads} onCloseMonitor={handleCloseMonitor} />
+
     </div>
   );
 }

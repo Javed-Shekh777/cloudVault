@@ -19,86 +19,93 @@ const baseQuery = fetchBaseQuery({
   },
 });
 
+
 export const driveApi = createApi({
-  reducerPath: 'driveApi',
-  baseQuery: baseQuery, // Use the customized baseQuery
-  tagTypes: ['File'],
+  reducerPath: "driveApi",
+  baseQuery,
+  tagTypes: ["Files", "Auth","User"],
   endpoints: (builder) => ({
-    // GET /files
+    // --- Auth ---
+    login: builder.mutation({
+      query: (credentials) => ({
+        url: "/auth/localLogin",
+        method: "POST",
+        body: credentials,
+      }),
+      invalidatesTags: ["Auth"],
+    }),
+    register: builder.mutation({
+      query: (data) => ({
+        url: "/auth/localRegister",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Auth"],
+    }),
+    updateProfile: builder.mutation({
+      query: (data) => ({
+        url: "/user/update-profile",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Auth","User"],
+    }),
+
+    // --- Files ---
     getFiles: builder.query({
-      query: () => '/files',
-      providesTags: ['File'],
+      query: () => "/files",
+      providesTags: ["Files"],
     }),
     getStaredFiles: builder.query({
-      query: () => '/files/stared-files',
-      providesTags: ['File'],
+      query: () => "/files/stared-files",
+      providesTags: ["Files"],
     }),
-
-    // POST /files/upload
     uploadFile: builder.mutation({
-      // Receives an array of File objects
       query: (filesArray) => {
         const formData = new FormData();
-
-        // Append all files to the 'files' key (as required by the backend)
-        filesArray.forEach(file => {
-          formData.append('files', file);
-        });
-
-        return {
-          url: '/files/upload',
-          method: 'POST',
-          body: formData, // FormData is handled correctly by fetchBaseQuery
-        };
+        filesArray.forEach((file) => formData.append("files", file));
+        return { url: "/files/upload", method: "POST", body: formData };
       },
-      // Note: Invalidating tags AFTER the upload is complete is crucial
-      invalidatesTags: ['File'],
+      invalidatesTags: ["Files"],
     }),
-     addRemoveStar: builder.mutation({
+
+    addRemoveStar: builder.mutation({
       query: (id) => ({
         url: `/files/add-remove-star/${id}`,
-        method: 'PATCH', // Use PATCH or PUT for updates
+        method: "PATCH",
       }),
-      // Optional: use invalidatesTags to refetch relevant lists after mutation
-      invalidatesTags: ['Files'], 
+      invalidatesTags: ["Files"],
     }),
-
     toggleTrashStatus: builder.mutation({
       query: (id) => ({
         url: `/files/add-remove-trash/${id}`,
-        method: 'PATCH', // Use PATCH or PUT for updates
+        method: "PATCH",
       }),
-      invalidatesTags: ['Files'], 
+      invalidatesTags: ["Files"],
     }),
-
-    // GET /files/download/:id
     downloadFile: builder.query({
       query: (id) => `/files/download/${id}`,
     }),
-
-    
-
-    // DELETE /files/delete/:id
     deleteFile: builder.mutation({
-      query: (id) => {
-        return {
-          url: `/files/delete/${id}`,
-          method: 'DELETE',
-        };
-      },
-      invalidatesTags: ['File'],
+      query: (id) => ({
+        url: `/files/delete/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Files"],
     }),
-    
   }),
 });
 
 export const {
+  useLoginMutation,
+  useRegisterMutation,
   useGetFilesQuery,
   useGetStaredFilesQuery,
   useUploadFileMutation,
   useDownloadFileQuery,
-  useAddRemoveStarMutation ,
-  useToggleTrashStatusMutation ,
+  useAddRemoveStarMutation,
+  useToggleTrashStatusMutation,
   useDeleteFileMutation,
-
+  useUpdateProfileMutation
 } = driveApi;
+

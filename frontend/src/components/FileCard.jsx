@@ -6,7 +6,7 @@ import { typeIcon, typeColor } from "../utils/fileTypes.js";
 import { formatBytes, formatDate, handleToggleFunc } from "../utils/format.js";
 import { useAddRemoveStarMutation } from "../redux/api.js";
 
-export default function FileCard({ item, compact = false }) {
+export default function FileCard({ item, compact = false ,isTrash=false,selectedTrash=[]}) {
   // Pass item.format to the utility functions
   const Icon = typeIcon(item);
   const colorClass = typeColor(item); // Get the color class once
@@ -21,7 +21,9 @@ export default function FileCard({ item, compact = false }) {
     </div>
   ) : (
     // Card View
-    <div className="flex flex-col gap-3 sm:p-4 p-2.5 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-150 bg-white">
+    <div className="flex flex-col gap-3 sm:p-4 p-2.5 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-150 bg-white relative">
+      {isTrash && <input type="checkbox" checked={selectedTrash.includes(item?._id)} className="absolute left-1 top-1 h-5 w-5 " />}
+      
       {item.resource_type === 'image' && item.secure_url ? ( // Use secure_url for preview
         <img
           src={item.secure_url}
@@ -47,9 +49,16 @@ export default function FileCard({ item, compact = false }) {
         </div>
 
         {/* Star Button */}
-        <button type="button" onClick={() => handleToggleFunc(item?._id, toggleStar)} className="btn-ghost p-1 rounded-full hover:bg-gray-100 transition duration-150" title={item.starred ? "Unstar" : "Star"}>
-          {/* Assuming 'starred' field exists in your DB model */}
-          {item?.isFavourite ? <MdStar className="text-yellow-500 text-xl" /> : <MdStarBorder className="text-gray-500 text-xl" />}
+        <button
+          type="button"
+          //  onClick={() => toggleStar(item._id)}
+          onClick={() => handleToggleFunc(item?._id, toggleStar)}
+          className="btn-ghost p-1 rounded-full hover:bg-gray-100 transition duration-150"
+        >
+          {item.isFavourite
+            ? <MdStar className="text-yellow-500 text-xl" />
+            : <MdStarBorder className="text-gray-500 text-xl" />
+          }
         </button>
       </div>
     </div>

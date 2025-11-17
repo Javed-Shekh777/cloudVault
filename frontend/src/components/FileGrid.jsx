@@ -3,11 +3,12 @@ import FileCard from "./FileCard.jsx";
 import { formatBytes, formatDate } from "../utils/format.js";
  
 
-export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
+export default function FileGrid({ items, view = "grid", onOpen, onContext,isTrash=false,selectedTrash,onSelectTrash}) {
   const [selected, setSelected] = useState(new Set());
  
 
   const toggle = (id, multi) => {
+    onSelectTrash(id);
     setSelected(prev => {
       const next = new Set(prev);
       if (!multi) next.clear();
@@ -61,13 +62,16 @@ export default function FileGrid({ items, view = "grid", onOpen, onContext }) {
           // className={`card p-3 cursor-pointer ${selected.has(it.id) ? "ring-2 ring-brand-500" : ""}`}
           className={`card p-3 cursor-pointer }`}
 
-          onClick={(e) => toggle(it.id, e.shiftKey || e.ctrlKey || e.metaKey)}
+          onClick={(e) => toggle(it._id, e.shiftKey || e.ctrlKey || e.metaKey)}
           onDoubleClick={() => onOpen?.(it)}
           onContextMenu={(e) => { e.preventDefault(); onContext?.(e, it, () => setSelected(new Set())); }}
         >
-          <FileCard item={it}  />
+          <FileCard item={it} isTrash={isTrash} selectedTrash={selectedTrash}  />
         </div>
       ))}
     </div>
   );
 }
+
+
+ 
