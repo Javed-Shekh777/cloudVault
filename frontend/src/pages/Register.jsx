@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useRegisterMutation } from "../redux/api";
 import { useDispatch } from "react-redux";
+import { setCredentials } from "../redux/authSlice";
 
 export default function Register() {
   const [register, { isLoading }] = useRegisterMutation();
@@ -47,8 +48,9 @@ export default function Register() {
         email: form.email,
         password: form.password,
       }).unwrap();
+      dispatch(setCredentials({ user: res.user, token: res?.token }));
 
-      dispatch(setCredentials(res)); // { user, token }
+
       // redirect to dashboard
       window.location.href = "/";
     } catch (err) {
@@ -84,7 +86,7 @@ export default function Register() {
             <input
               type="email"
               placeholder="you@example.com"
-               value={form.email}
+              value={form.email}
               onChange={(e) =>
                 setForm({ ...form, email: e.target.value })
               }
@@ -106,7 +108,7 @@ export default function Register() {
             {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
           </div>
 
-           <div>
+          <div>
             <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
             <input
               type="password"
