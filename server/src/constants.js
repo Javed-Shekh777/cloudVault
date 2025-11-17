@@ -31,7 +31,7 @@ const MONGODB_URL =
     : `${dbUrl}/${dbName}?retryWrites=true&w=majority&appName=AtlasApp`;
 
 const PORT = process.env.PORT;
-const allowedOrigins = ["https://cloudvault-sage.vercel.app",process.env.FRONTEND,];
+const allowedOrigins = ["https://cloudvault-sage.vercel.app",process.env.FRONTEND];
 
 const Tokens = {
     acessToken: process.env.ACCESS_TOKEN,
