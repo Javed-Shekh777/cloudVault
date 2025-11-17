@@ -18,7 +18,12 @@ const updateProfile = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
         if (file) {
-            cloud = await cloudinaryUpload(file?.buffer, cloudinaryFolderNames.profiles);
+            const uploadOptions = {
+                folder: cloudinaryFolderNames.profiles,
+                resource_type: "image",
+            };
+
+            cloud = await cloudinaryUpload(file?.buffer, uploadOptions);
 
             if (cloud && cloud?.secure_url) {
                 await cloudinaryDelete(isExist?.profileImage?.publicId, "image");
