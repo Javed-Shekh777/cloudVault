@@ -7,16 +7,15 @@ const API = axios.create({
 });
 
 // Add a request interceptor to attach the auth token to every request
-// API.interceptors.request.use((config) => {
-    // Retrieve your token from where it's stored (e.g., localStorage, a Redux selector)
-    // const token = localStorage.getItem('userToken'); // Change this based on your storage method
-    // if (token) {
-    //     config.headers.Authorization = `Bearer ${token}`;
-    // }
-    // return config;
-// }, (error) => {
-//     return Promise.reject(error);
-// });
+API.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token'); // Change this based on your storage method
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, (error) => {
+    return Promise.reject(error);
+});
 
 
 // This function needs to be flexible to accept the onUploadProgress callback
