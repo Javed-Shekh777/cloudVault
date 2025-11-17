@@ -6,17 +6,15 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 const baseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api/v1',
   prepareHeaders: (headers, { getState }) => {
-    // Access the token from your auth slice in the Redux store
-    // Ensure you have an 'auth' slice with a 'token' field
-    const token = getState().auth?.token;
+  const token = getState().auth?.token;
+  console.log("Header TOken",token)
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
 
-    if (token) {
-      // Set the authorization header for every request
-      headers.set('authorization', `Bearer ${token}`);
-    }
-    // RTK Query handles the Content-Type for FormData automatically
-    return headers;
-  },
+  }
+  return headers;
+}
+
 });
 
 
