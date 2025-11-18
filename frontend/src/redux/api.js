@@ -14,7 +14,6 @@ const baseQuery = fetchBaseQuery({
     }
     return headers;
   }
-
 });
 
 
@@ -68,7 +67,6 @@ export const driveApi = createApi({
       },
       invalidatesTags: ["Files"],
     }),
-
     addRemoveStar: builder.mutation({
       query: (id) => ({
         url: `/files/add-remove-star/${id}`,
@@ -93,6 +91,34 @@ export const driveApi = createApi({
       }),
       invalidatesTags: ["Files"],
     }),
+
+
+    // --- Folder ---
+    getFolders: builder.query({
+      query: () => "/folders/get-folders",
+      providesTags: ["Folders"],
+    }),
+    createFolder: builder.mutation({
+      query: (data) => ({
+        url: "/folders/create-folder",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["Folders"],
+    }),
+    moveFileToFolder: builder.mutation({
+      query: ({ folderId, fileId }) => ({
+        url: `folders/${folderId}/add-file/${fileId}`,
+        method: "PATCH",
+      }),
+      invalidatesTags: ["Files", "Folders"],
+    }),
+    getFolderContents: builder.query({
+      query: (folderId) => `/folders/get-folder/${folderId}`,
+      providesTags: ["Files", "Folders"],
+    }),
+
+
   }),
 });
 
@@ -106,6 +132,11 @@ export const {
   useAddRemoveStarMutation,
   useToggleTrashStatusMutation,
   useDeleteFileMutation,
-  useUpdateProfileMutation
+  useUpdateProfileMutation,
+
+  useGetFoldersQuery,
+  useGetFolderContentsQuery,
+  useCreateFolderMutation,
+  useMoveFileToFolderMutation
 } = driveApi;
 

@@ -20,9 +20,11 @@ API.interceptors.request.use((config) => {
 
 // This function needs to be flexible to accept the onUploadProgress callback
 // and handles one file per call to track progress individually
-export const uploadFileWithProgress = (file, onProgressCallback) => {
+export const uploadFileWithProgress = (file,folderId ,onProgressCallback) => {
   const formData = new FormData();
   formData.append('files', file); // Use 'files' key for backend compatibility
+  formData.append('folder', folderId||""); // Use 'files' key for backend compatibility
+
 
   return API.post('/files/upload', formData, {
     onUploadProgress: onProgressCallback

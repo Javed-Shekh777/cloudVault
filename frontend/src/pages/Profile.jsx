@@ -90,7 +90,7 @@ export default function Profile() {
                         onClick={logoutHandle}
                         className="w-fit px-3 bg-red-600 text-white py-2 rounded hover:bg-red-700 transition"
                     >
-                        {isLoading ? "logout..." : "Logout"}
+                        Logout
                     </button>
                 </div>
             </form>

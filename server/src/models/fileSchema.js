@@ -9,7 +9,6 @@ const fileSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     // Cloudinary public ID
     public_id: {
       type: String,
@@ -17,7 +16,6 @@ const fileSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
-
     // Secure CDN URL
     secure_url: {
       type: String,
@@ -30,9 +28,6 @@ const fileSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-
-
-
     // Resource type
     resource_type: {
       type: String,
@@ -51,48 +46,35 @@ const fileSchema = new mongoose.Schema(
       ],
       default: 'other',
     },
-
     // File format (jpg, mp4, pdf, etc.)
     format: {
       type: String,
       trim: true,
     },
-
     // File size in bytes
     size: {
       type: Number,
       required: true,
     },
-
     // Dimensions (for images/videos)
     width: { type: Number, default: 0 },
     height: { type: Number, default: 0 },
-
     // Duration (for audio/video)
     duration: { type: Number, default: 0 },
-
     // Folder reference
-    folder: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder },
-
+    folder: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder,default:null },
     // Tags
     tags: [{ type: String, trim: true }],
-
     // Description/caption
     description: { type: String, trim: true },
-
     // Sharing
     sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user }],
-
     // Versioning
     version: { type: Number, default: 1 },
-
     // Uploader reference
     uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user },
-
     // Upload date
     uploadedAt: { type: Date, default: Date.now },
-
-
     isFavourite: { type: Boolean, default: false },
     isDeleted: {
       type: Boolean,

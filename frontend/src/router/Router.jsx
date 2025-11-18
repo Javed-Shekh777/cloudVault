@@ -10,6 +10,8 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Profile from "../pages/Profile";
+import FolderView from "../pages/FolderView";
+import FileExplorer from "../pages/FileExplorer";
 
 const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
@@ -30,7 +32,9 @@ const router = createBrowserRouter([
           { path: "search", element: <Search /> },
           { path: "recent", element: <Recent /> },
           { path: "profile", element: <Profile /> },
+          { path: "file", element: <FileExplorer /> },
 
+          { path: "folder/:folderId", element: <FolderView /> },
         ],
       },
     ],

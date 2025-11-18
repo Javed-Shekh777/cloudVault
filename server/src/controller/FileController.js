@@ -1,5 +1,7 @@
 const { cloudinaryDelete, cloudinaryUpload } = require('../util/cloudinary');
 const File = require('../models/fileSchema');
+const Folder = require('../models/folderSchema');
+
 const { cloudinaryFolderNames } = require('../constants');
 const cloudinary = require("cloudinary").v2;
 
@@ -23,97 +25,115 @@ const sanitizeFilename = (filename) => {
 
 const uploadFilesHandler = async (req, res) => {
   if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ success: false, error: 'No files provided' });
+    return res.status(400).json({ success: false, error: "No files provided" });
   }
 
+  const session = await File.startSession();
+  session.startTransaction();
+
   try {
-    // Map over all files and upload them in parallel
-    const uploadedFilesData = await Promise.all(req.files.map(async (file) => {
+    const uploadedFilesData = await Promise.all(
+      req.files.map(async (file) => {
+        let resourceType = "raw";
+        if (file.mimetype.startsWith("image/")) resourceType = "image";
+        else if (file.mimetype.startsWith("video/") || file.mimetype.startsWith("audio/"))
+          resourceType = "video";
 
-      // Determine resource type
-      let resourceType = 'raw';
-      if (file.mimetype.startsWith('image/')) {
-        resourceType = 'image';
-      } else if (file.mimetype.startsWith('video/') || file.mimetype.startsWith('audio/')) {
-        resourceType = 'video';
-      }
+        const originalFilename = file.originalname;
+        const sanitizedName = sanitizeFilename(originalFilename);
+        const timestamp = Date.now();
+        const fileExtension = originalFilename.split(".").pop();
+        const basePublicId = `${timestamp}-${sanitizedName}`;
 
-      // Sanitize name and prepare IDs
-      const originalFilename = file.originalname;
-      const sanitizedName = sanitizeFilename(originalFilename);
-      const timestamp = Date.now();
-      const fileExtension = originalFilename.split('.').pop();
-      // Ensure public_id is clean and simple
-      const basePublicId = `${timestamp}-${sanitizedName}`;
+        const uploadOptions = {
+          folder: cloudinaryFolderNames.files,
+          resource_type: resourceType,
+          public_id: basePublicId,
+          format: fileExtension,
+        };
 
-      const uploadOptions = {
-        folder: cloudinaryFolderNames.files,
-        resource_type: resourceType,
-        public_id: basePublicId,
-        format: fileExtension
-      };
+        let result;
+        try {
+          result = await cloudinaryUpload(file.buffer, uploadOptions);
+        } catch (uploadError) {
+          console.error(`❌ Failed to upload ${file.originalname}:`, uploadError.message);
+          return { error: uploadError.message, filename: originalFilename };
+        }
 
-      let result;
-      try {
-        // Await the helper function call (this handles single file errors gracefully)
-        result = await cloudinaryUpload(file.buffer, uploadOptions);
-      } catch (uploadError) {
-        console.error(`❌ Failed to upload ${file.originalname}:`, uploadError.message);
-        return null; // Returning null here allows Promise.all to continue
-      }
+        if (!result) return null;
 
-      if (!result) return null; // Skip DB entry if upload failed
+        const downloadUrl = cloudinary.url(result.public_id, {
+          resource_type: resourceType,
+          format: result.format,
+          fetch_format: result.format,
+          flags: ["attachment"],
+          sign_url: true,
+        });
 
-      // Generate download URL
-      const downloadUrl = cloudinary.url(result.public_id, {
-        resource_type: resourceType,
-        format: result.format,
-        fetch_format: result.format,
-        flags: ["attachment"],
-        sign_url: true
-      });
+        return {
+          filename: originalFilename,
+          public_id: result.public_id,
+          secure_url: result.secure_url,
+          downloadUrl,
+          resource_type: result.resource_type || "other",
+          format: result?.format,
+          size: result.bytes,
+          width: result.width || 0,
+          height: result.height || 0,
+          duration: result.duration || 0,
+          folder: req.body.folder || null,
+          tags: req.body.tags || [],
+          description: req.body.description || "",
+          uploadedBy: req.user?._id || null,
+        };
+      })
+    );
 
-      // Prepare data for Mongoose creation
-      return {
-        filename: originalFilename,
-        public_id: result.public_id,
-        secure_url: result.secure_url,
-        downloadUrl: downloadUrl,
-        resource_type: result.resource_type || 'other',
-        format: result?.format,
-        size: result.bytes,
-        width: result.width || 0,
-        height: result.height || 0,
-        duration: result.duration || 0,
-        folder: req.body.folder || null,
-        tags: req.body.tags || [],
-        description: req.body.description || "",
-        uploadedBy: req.user?._id || null,
-      };
-    }));
-
-    // Filter out any failed uploads (null values) from the array
-    const successfulUploadsData = uploadedFilesData.filter(item => item !== null);
+    const successfulUploadsData = uploadedFilesData.filter(
+      (item) => item && !item.error
+    );
 
     if (successfulUploadsData.length === 0) {
-      return res.status(400).json({ success: false, message: "No files were successfully uploaded." });
+      return res.status(400).json({
+        success: false,
+        message: "No files were successfully uploaded.",
+        // failed: uploadedFilesData.filter((f) => f?.error),
+      });
     }
 
-    // Save successful files data to MongoDB
-    const createdFiles = await File.insertMany(successfulUploadsData);
+    // Save files
+    const createdFiles = await File.insertMany(successfulUploadsData, { session });
+
+    // Update folder reference if folderId provided
+    if (req.body.folder) {
+      await Folder.findByIdAndUpdate(
+        req.body.folder,
+        { $push: { files: { $each: createdFiles.map((f) => f._id) } } },
+        { session }
+      );
+    }
+
+    await session.commitTransaction();
+    session.endSession();
 
     res.status(201).json({
       success: true,
       message: `${createdFiles.length} files uploaded successfully!`,
-      files: createdFiles
+      files: createdFiles,
+      // failed: uploadedFilesData.filter((f) => f?.error),
     });
-
   } catch (err) {
-    // This general catch block handles other fatal errors (e.g., DB connection issues)
-    console.error('❌ General upload error:', err);
-    res.status(500).json({ success: false, error: 'Upload failed due to server error', details: err.message });
+    await session.abortTransaction();
+    session.endSession();
+    console.error("❌ General upload error:", err);
+    res.status(500).json({
+      success: false,
+      error: "Upload failed due to server error",
+      details: err.message,
+    });
   }
 };
+
 
 
 const getAllFiles = async (req, res) => {

@@ -6,15 +6,18 @@ import {
   MdDelete,
   MdDownload,
   MdEdit,
+  MdOutlineSubdirectoryArrowRight
 } from "react-icons/md";
-import { useDeleteFileMutation,useToggleTrashStatusMutation } from "../redux/api";
+import { useDeleteFileMutation, useMoveFileToFolderMutation, useToggleTrashStatusMutation } from "../redux/api";
 import { useRef } from "react";
 import { handleToggleFunc } from "../utils/format";
 
-export default function ContextMenu({ x, y, item, onClose }) {
+export default function ContextMenu({ x, y, item, onClose, setMoveModal, folders }) {
   console.log(item);
   const [deleteFile] = useDeleteFileMutation();
   const [toggleTrash] = useToggleTrashStatusMutation();
+  const [moveFile] = useMoveFileToFolderMutation();
+
 
 
   const ref = useRef(null);
@@ -25,8 +28,8 @@ export default function ContextMenu({ x, y, item, onClose }) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [onClose]);
 
- 
-  
+
+
 
 
   const handleDownload = async (file) => {
@@ -48,6 +51,18 @@ export default function ContextMenu({ x, y, item, onClose }) {
     }
   };
 
+  const handleMove = async (folderId) => {
+    try {
+      await moveFile({ folderId, fileId: item._id }).unwrap();
+      alert(`✅ Moved ${item?.filename} to folder`);
+      onClose();
+    } catch (err) {
+      console.error("❌ Move failed:", err);
+      alert("Move failed!");
+    }
+  };
+
+
   return (
     <div
       ref={ref}
@@ -68,15 +83,36 @@ export default function ContextMenu({ x, y, item, onClose }) {
         icon={MdDelete}
         label="Trash"
         onClick={() => {
-          handleToggleFunc(item?._id,toggleTrash); // ✅ mutation call
+          handleToggleFunc(item?._id, toggleTrash); // ✅ mutation call
           onClose();                  // ✅ फिर menu बंद
         }}
       />
-      <MenuItem
-        icon={MdDriveFileMove}
-        label="Move to"
-        onClick={() => console.log("Move:", item)}
-      />
+      <div className="  w-full group">
+        {/* Trigger button */}
+        <button
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-800 hover:bg-gray-100 rounded"
+        >
+          <MdDriveFileMove />
+          Move to
+        </button>
+
+        {/* Dropdown list */}
+        <ul className=" ml-2 hidden  group-hover:block bg-white   rounded   max-h-60 overflow-y-auto">
+          {folders.map(f => (
+            <li key={f._id}>
+              <button
+                className="w-full flex items-center text-left px-3  hover:bg-gray-100"
+                onClick={() => handleMove(f._id)}
+              >
+                <MdOutlineSubdirectoryArrowRight /> 📁 {f.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+
+
       <MenuItem
         icon={MdContentCopy}
         label="Make a copy"
@@ -91,7 +127,7 @@ export default function ContextMenu({ x, y, item, onClose }) {
           onClose();                  // ✅ फिर menu बंद
         }}
       />
-      <MenuItem
+      {/* <MenuItem
         icon={MdDelete}
         label="Remove"
         danger
@@ -99,7 +135,7 @@ export default function ContextMenu({ x, y, item, onClose }) {
           deleteFile(item?._id); // ✅ mutation call
           onClose();                  // ✅ फिर menu बंद
         }}
-      />
+      /> */}
 
 
     </div>

@@ -22,6 +22,11 @@ const userSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     verificationCode: { type: String },
     verificationExpiry: { type: Date },
+    storage: {
+    total: { type: Number, default: 15 * 1024 * 1024 * 1024 }, // 15 GB in bytes
+    used: { type: Number, default: 0 },
+},
+
   },
   { timestamps: true }
 );
