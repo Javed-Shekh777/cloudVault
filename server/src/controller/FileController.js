@@ -138,7 +138,8 @@ const uploadFilesHandler = async (req, res) => {
 
 const getAllFiles = async (req, res) => {
   try {
-    const files = await File.find().sort({ createdAt: -1 });
+    const userId = req.user?._id;
+    const files = await File.find({uploadedBy:userId}).sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: files.length,
