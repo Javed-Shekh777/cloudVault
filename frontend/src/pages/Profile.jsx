@@ -1,7 +1,6 @@
 import { useSelector, useDispatch } from "react-redux";
 import { useState } from "react";
-import { useUpdateProfileMutation } from "../redux/api";
-import { logout, setCredentials } from "../redux/authSlice";
+import { logout, logoutAsync, setCredentials } from "../redux/authSlice";
 
 export default function Profile() {
     const { user } = useSelector((state) => state.auth);
@@ -12,7 +11,6 @@ export default function Profile() {
         profileImage: null, // store File object here
     });
 
-    const [updateProfile, { isLoading }] = useUpdateProfileMutation();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -20,20 +18,18 @@ export default function Profile() {
         try {
             const formData = new FormData();
             formData.append("name", form.name);
-
             if (form.profileImage) {
                 formData.append("profileImage", form.profileImage);
             }
-
             console.log(formData);
-            const res = await updateProfile(formData).unwrap();
-            console.log("Updated:", res?.user);
+            // const res = await updateProfile(formData).unwrap();
+            // console.log("Updated:", res);
 
             // update redux state with new user
-            dispatch(setCredentials({ user: res.user }));
+            // dispatch(setCredentials({ user: res.data.user }));
 
         } catch (err) {
-            console.error(err);
+            console.error("Err",err);
         }
     };
 
@@ -44,7 +40,7 @@ export default function Profile() {
             : user?.profileImage?.url || "https://via.placeholder.com/80";
 
     const logoutHandle = () => {
-        dispatch(logout());
+        dispatch(logoutAsync());
     }
     return (
         <div className="max-w-md mx-auto bg-white shadow rounded-lg p-6 space-y-4">
@@ -79,10 +75,10 @@ export default function Profile() {
 
                 <button
                     type="submit"
-                    disabled={isLoading}
+                    // disabled={isLoading}
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
                 >
-                    {isLoading ? "Updating..." : "Update Profile"}
+                    {/* {isLoading ? "Updating..." : "Update Profile"} */}Update Profile
                 </button>
                 <div className="flex w-full  justify-end">
                     <button

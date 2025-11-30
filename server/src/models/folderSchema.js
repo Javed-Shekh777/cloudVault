@@ -1,21 +1,89 @@
-const mongoose = require('mongoose');
-const { SchemaName } = require('../constants');
+const mongoose = require("mongoose");
+const { SchemaName } = require("../constants");
+
 const folderSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user, required: true },
-    breadcrumb: [{
-      _id: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder },
-      name: { type: String }
-    }],
-    parentFolder: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder, default: null }, 
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: SchemaName.user,
+      required: true,
+      index: true,
+    },
+
+   // Parent folder
+    parentFolder: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder, default: null, index: true },
+
+    // Children folders
+    childrenFolders: [{ type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder }],
+
+    // Files in folder
     files: [{ type: mongoose.Schema.Types.ObjectId, ref: SchemaName.file }],
-    sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user }],
-    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user, default: null },
-    isDeleted: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user, default: null },
+
+ 
+    
+    // 🔥 Sharing
+    sharedWith: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user },
+        permission: {
+          type: String,
+          enum: ["viewer", "editor"],
+          default: "viewer",
+        },
+      },
+    ],
+
+    // Breadcrumb for fast navigation
+    breadcrumb: [{ _id: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder }, name: String }],
+
+    // Trash / Delete
+    isDeleted: { type: Boolean, default: false, index: true },
+    trashedAt: { type: Date, default: null },
+
+    // Locking
+    isLocked: { type: Boolean, default: false },
+    lockReason: String
   },
   { timestamps: true }
 );
+
+// ---------------------------
+// TEXT SEARCH INDEX
+// ---------------------------
+folderSchema.index({ name: "text" });
+
+// ---------------------------
+// Hierarchy indexes
+// ---------------------------
+folderSchema.index({ parentFolder: 1 });
+folderSchema.index({ "breadcrumb._id": 1 });
+
+// ---------------------------
+// AUTO-GENERATE BREADCRUMB
+// ---------------------------
+folderSchema.pre("save", async function (next) {
+  if (!this.isModified("parentFolder")) return next();
+
+  if (!this.parentFolder) {
+    this.breadcrumb = [];
+    return next();
+  }
+
+  const parent = await this.model(SchemaName.folder).findById(this.parentFolder);
+
+  this.breadcrumb = [
+    ...(parent.breadcrumb || []),
+    { _id: parent._id, name: parent.name },
+  ];
+
+  next();
+});
+
 module.exports = mongoose.model(SchemaName.folder, folderSchema);
-
-

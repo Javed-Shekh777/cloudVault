@@ -10,13 +10,13 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import ProtectedRoute from "../components/ProtectedRoute";
 import Profile from "../pages/Profile";
-import FolderView from "../pages/FolderView";
 import FileExplorer from "../pages/FileExplorer";
+import VerifyAccountOTP from "../pages/VerifyAccountOTP";
+import EmailVerifiedPage from "../pages/EmailVerifiedPage";
+import VerifyHandler from "../pages/VerifyHandler";
+import LockedPage from "../pages/LockedPage";
 
 const router = createBrowserRouter([
-  { path: "/login", element: <Login /> },
-  { path: "/register", element: <Register /> },
-
   {
     element: <ProtectedRoute />, // ✅ protect everything inside
     children: [
@@ -32,13 +32,20 @@ const router = createBrowserRouter([
           { path: "search", element: <Search /> },
           { path: "recent", element: <Recent /> },
           { path: "profile", element: <Profile /> },
+          { path: "locked", element: <LockedPage /> },
+
           { path: "file", element: <FileExplorer /> },
 
-          { path: "folder/:folderId", element: <FolderView /> },
         ],
       },
     ],
   },
+  { path: "/login", element: <Login /> },
+  { path: "/register", element: <Register /> },
+  { path: "verify-mail", element: <VerifyAccountOTP /> },
+  { path: "verify-account", element: <EmailVerifiedPage /> },
+  { path: "verify", element: <VerifyHandler /> },
+
 ]);
 
 export default router;

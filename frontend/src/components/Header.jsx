@@ -53,7 +53,7 @@ export default function Header({ oepn, setOpen }) {
           </button>
 
           {/* Account/Profile Button */}
-          {user ? <img src={user?.profileImage?.url} alt="" className="h-7 w-7 p-1 rounded-full hover:bg-cyan-100 transition duration-150" />: <button
+          {user ? <img src={user?.profileImage?.url ||""} alt="" className="h-7 w-7 p-1 rounded-full hover:bg-cyan-100 transition duration-150" />: <button
             className="btn-ghost h-7 w-7 p-1 rounded-full flex items-center justify-center hover:bg-cyan-100 transition duration-150"
             title="Account"
           >

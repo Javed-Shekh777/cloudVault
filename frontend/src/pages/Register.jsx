@@ -3,12 +3,12 @@ import { FcGoogle } from "react-icons/fc";
 import { FaGithub, FaFacebook } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { useRegisterMutation } from "../redux/api";
 import { useDispatch } from "react-redux";
-import { setCredentials } from "../redux/authSlice";
+import { register, setCredentials } from "../redux/authSlice";
+import toast from 'react-hot-toast';
+import { getDeviceId } from "../utils/common";
 
 export default function Register() {
-  const [register, { isLoading }] = useRegisterMutation();
   const dispatch = useDispatch();
   const [form, setForm] = useState({
     name: "",
@@ -17,6 +17,8 @@ export default function Register() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+
 
   const validate = () => {
     const newErrors = {};
@@ -43,26 +45,32 @@ export default function Register() {
     if (!validate()) return; // stop if validation fails
 
     try {
-      const res = await register({
+      const deviceId = getDeviceId();
+      const res = await dispatch(register({
         name: form.name,
         email: form.email,
         password: form.password,
-      }).unwrap();
+        deviceId
+      })).unwrap();
 
       console.log(res);
+      toast.success(res.message || "Registration successfull");
       // dispatch(setCredentials({ user: res.user, token: res?.token }));
-
+      setIsLoading(false);
 
       // redirect to dashboard
-      window.location.href = "/login";
+      window.location.href = "/verify-mail";
     } catch (err) {
-      console.log(err);
+      console.log("err", err);
+
+      toast.error(err?.message || "Registration failed");
+
       setErrors({ api: err.data?.error || "Registration failed" });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen py-3 flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md bg-white shadow-lg rounded-xl sm:p-8 p-5 space-y-5">
         <h1 className="text-2xl font-bold text-center text-gray-800">Create your account</h1>
         <p className="text-sm text-gray-500 text-center">Join DriveClone today</p>
@@ -102,6 +110,7 @@ export default function Register() {
               type="password"
               placeholder="••••••••"
               value={form.password}
+              autoComplete="off"
               onChange={(e) =>
                 setForm({ ...form, password: e.target.value })
               }
@@ -115,6 +124,8 @@ export default function Register() {
             <input
               type="password"
               placeholder="••••••••"
+              autoComplete="off"
+
               value={form.confirmPassword}
               onChange={(e) =>
                 setForm({ ...form, confirmPassword: e.target.value })

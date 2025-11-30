@@ -1,15 +1,13 @@
-import { useMoveFileToFolderMutation } from "../redux/api";
 
 export default function MoveModal({ open=true, file, folders, onClose }) {
-  const [moveFile] = useMoveFileToFolderMutation();
 
   if (!open) return null;
 
   const handleMove = async (folderId) => {
     try {
         console.log(folderId,file);
-      await moveFile({ folderId, fileId: file._id }).unwrap();
-      alert(`✅ Moved ${file?.filename} to folder`);
+      // await moveFile({ folderId, fileId: file._id }).unwrap();
+      // alert(`✅ Moved ${file?.filename} to folder`);
       onClose();
     } catch (err) {
       console.error("❌ Move failed:", err);

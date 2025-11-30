@@ -1,70 +1,70 @@
-// components/UploadProgressMonitor.jsx (Updated)
+// src/components/UploadProgressMonitor.jsx
+import React, { useState } from "react";
 
-import { useState, useEffect } from 'react';
-import { MdCheckCircle, MdError, MdUpload, MdClose } from 'react-icons/md';
+export default function UploadProgressMonitor({ uploads, onCloseMonitor, onCancelUpload, onRetryUpload, onRemove }) {
+  const [collapsed, setCollapsed] = useState(false);
 
-export default function UploadProgressMonitor({ uploads, onCloseMonitor }) {
-    const [isOpen, setIsOpen] = useState(true);
+  const items = uploads || [];
 
-    if (uploads.length === 0) return null;
+  if (!items.length) return null;
 
-    const completedUploads = uploads.filter(u => u.status === 'completed' || u.status === 'failed').length;
-    const totalUploads = uploads.length;
-    const isAllComplete = completedUploads === totalUploads;
-    const title = isAllComplete ? `Uploaded (${completedUploads}/${totalUploads})` : `Uploading (${completedUploads}/${totalUploads})`;
-
-    return (
-        <div className="fixed bottom-6 right-6 w-80 bg-white shadow-xl rounded-lg border border-gray-200 z-50">
-            {/* यह div सिर्फ टॉगल करने के लिए है (छोटा/बड़ा) */}
-            <div className="p-3 border-b flex justify-between items-center">
-                <h4 
-                title='Toggle window'
-                    className="font-semibold text-sm cursor-pointer" 
-                    onClick={() => setIsOpen(!isOpen)} // सिर्फ टॉगल करता है
-                >
-                    {title}
-                </h4>
-                
-                {/* यह बटन सिर्फ बंद करने के लिए है (पूरा बॉक्स हटा दें) */}
-                <button 
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        onCloseMonitor(); // Parent component का क्लोज हैंडलर
-                    }} 
-                    className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                >
-                    <MdClose />
-                </button>
-            </div>
-
-            {/* यह हिस्सा सिर्फ तभी दिखता है जब isOpen true होता है */}
-            {isOpen && (
-                <div className="max-h-60 overflow-y-auto">
-                    {uploads.map((upload) => (
-                        <div key={upload.id} className="p-3 flex items-center gap-3 border-b last:border-b-0">
-                            {/* ... (Rest of the upload item UI: icons, progress bars) ... */}
-                            {upload.status === 'uploading' && <MdUpload className="text-blue-500" />}
-                            {upload.status === 'completed' && <MdCheckCircle className="text-green-500" />}
-                            {upload.status === 'failed' && <MdError className="text-red-500" />}
-
-                            <div className="grow min-w-0">
-                                <div className="text-xs truncate">{upload.fileName}</div>
-                                {upload.status === 'uploading' && (
-                                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                                        <div
-                                            className="bg-blue-600 h-1.5 rounded-full"
-                                            style={{ width: `${upload.progress || 0}%` }}
-                                        ></div>
-                                    </div>
-                                )}
-                                <div className='text-xs text-gray-500 mt-0.5'>
-                                    {upload.status === 'completed' ? 'completed' : upload.status === 'failed' ? 'failed' : `${Math.round(upload.progress || 0)}%`}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
+  return (
+    <div className="fixed right-4 bottom-4 w-96 bg-white shadow-lg rounded-lg overflow-hidden z-50">
+      <div className="flex items-center justify-between px-4 py-2 border-b">
+        <div className="flex items-center gap-3">
+          <div className="font-semibold">Uploads</div>
+          <div className="text-sm text-gray-500"> {items.length} </div>
         </div>
-    );
+        <div className="flex items-center gap-2">
+          <button onClick={() => setCollapsed(c => !c)} className="text-sm px-2 py-1">{collapsed ? "Expand" : "Collapse"}</button>
+          <button onClick={onCloseMonitor} className="text-sm px-2 py-1">Close</button>
+        </div>
+      </div>
+
+      {!collapsed && (
+        <div className="max-h-72 overflow-auto">
+          {items.map(u => (
+            <div key={u.id} className="px-4 py-3 border-b flex items-center gap-3">
+              <div className="flex-1">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm font-medium">{u.fileName}</div>
+                  <div className="text-xs text-gray-500">
+                    {u.status === "uploading" && `${u.progress}%`}
+                    {u.status === "completed" && "Done"}
+                    {u.status === "failed" && "Failed"}
+                    {u.status === "canceled" && "Canceled"}
+                  </div>
+                </div>
+
+                <div className="mt-2">
+                  <div className="w-full bg-gray-100 h-2 rounded">
+                    <div
+                      style={{ width: `${u.progress}%` }}
+                      className={`h-2 rounded ${u.status === "failed" ? "bg-red-500" : "bg-green-500"}`}
+                    />
+                  </div>
+                  {u.error && <div className="text-xs text-red-600 mt-1">{u.error}</div>}
+                </div>
+              </div>
+
+              <div className="flex flex-col items-end gap-2">
+                {u.status === "uploading" && (
+                  <button onClick={() => onCancelUpload?.(u.id)} className="text-xs px-2 py-1 bg-gray-200 rounded">Cancel</button>
+                )}
+                {u.status === "failed" && (
+                  <div className="flex flex-col gap-1">
+                    <button onClick={() => onRetryUpload?.(u.id)} className="text-xs px-2 py-1 bg-blue-500 text-white rounded">Retry</button>
+                    <button onClick={() => onRemove?.(u.id)} className="text-xs px-2 py-1 bg-gray-200 rounded">Remove</button>
+                  </div>
+                )}
+                {u.status === "completed" && (
+                  <button onClick={() => onRemove?.(u.id)} className="text-xs px-2 py-1 bg-gray-200 rounded">Remove</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

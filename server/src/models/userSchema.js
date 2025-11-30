@@ -1,13 +1,17 @@
+// models/User.js
 const mongoose = require("mongoose");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+const argon2 = require("argon2");
+const crypto = require("crypto");
 const { SchemaName, Tokens } = require("../constants");
 
-const userSchema = new mongoose.Schema(
+const { Schema } = mongoose;
+
+
+const userSchema = new Schema(
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String }, // hashed
+    name: { type: String, required: [true,"Username is required"], trim: true },
+    email: { type: String, required: [true,"Email is required"], unique: true, lowercase: [true,"Email should be lowercase"], index: true },
+    password: { type: String }, // argon2 hash
     role: { type: String, enum: ["user", "admin"], default: "user" },
     profileImage: {
       url: { type: String, default: "" },
@@ -20,33 +24,68 @@ const userSchema = new mongoose.Schema(
     },
     providerId: { type: String },
     isVerified: { type: Boolean, default: false },
-    verificationCode: { type: String },
-    verificationExpiry: { type: Date },
-    storage: {
-    total: { type: Number, default: 15 * 1024 * 1024 * 1024 }, // 15 GB in bytes
-    used: { type: Number, default: 0 },
-},
 
+    // no raw verification tokens here — use VerificationToken collection
+    storageUsed: { type: Number, default: 0 },
+    storageLimit: { type: Number, default: 15 * 1024 ** 3 }, // bytes
+    settings: { type: Object, default: {} },
+
+    // security flags
+    disabled: { type: Boolean, default: false }, // admin can disable
+    mfaEnabled: { type: Boolean, default: false }, // if later we do TOTP
   },
   { timestamps: true }
 );
 
-// Hash password before save
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password") || !this.password) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
-});
+// Password setter - use argon2 + pepper
+userSchema.methods.setPassword = async function (plainPassword) {
+  if (!plainPassword) throw new Error("Password is required");
 
-userSchema.methods.isPasswordCorrect = async function (password) {
-  if (!this.password) return false;
-  return await bcrypt.compare(password, this.password);
-};
+  const toHash = plainPassword + Tokens.passwordPaper;
 
-userSchema.methods.generateAccessToken = function () {
-  return jwt.sign({ id: this._id, email: this.email }, Tokens.acessToken, {
-    expiresIn: Tokens.accessTokenExpiry,
+  this.password = await argon2.hash(toHash, {
+    type: argon2.argon2id,
+    memoryCost: 2 ** 15,
+    timeCost: 3,
+    parallelism: 1,
   });
 };
+
+
+// Password verifier
+userSchema.methods.verifyPassword = async function (plainPassword) {
+  if (!this.password) return false;
+  
+  try {
+    const ok = await argon2.verify(this.password, plainPassword + Tokens.passwordPaper);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+};
+
+// Safe public profile
+userSchema.methods.safeProfile = function () {
+  return {
+    id: this._id,
+    name: this.name,
+    email: this.email,
+    role: this.role,
+    password: this.password,
+    profileImage: this.profileImage,
+    isVerified: this.isVerified,
+    storageUsed: this.storageUsed,
+    storageLimit: this.storageLimit,
+    createdAt: this.createdAt,
+  };
+};
+
+// Pre remove hook: cascade or mark related sessions/tokens revoked (optional)
+userSchema.pre("remove", async function (next) {
+  // Example: mark sessions revoked (if Session model exists)
+  // const Session = mongoose.model("Session");
+  // await Session.updateMany({ userId: this._id }, { revoked: true });
+  next();
+});
 
 module.exports = mongoose.model(SchemaName.user, userSchema);

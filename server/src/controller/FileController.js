@@ -1,16 +1,22 @@
-const { cloudinaryDelete, cloudinaryUpload } = require('../util/cloudinary');
-const File = require('../models/fileSchema');
-const Folder = require('../models/folderSchema');
+// const { cloudinaryDelete, cloudinaryUpload } = require('../utils/cloudinary');
+// const File = require('../models/fileSchema');
+// const Folder = require('../models/folderSchema');
 
-const { cloudinaryFolderNames } = require('../constants');
+// const { cloudinaryFolderNames } = require('../constants');
 const cloudinary = require("cloudinary").v2;
+const { cloudinaryUpload, cloudinaryDelete } = require("../utils/cloudinary");
+const File = require("../models/fileSchema");
+const Folder = require("../models/folderSchema");
+const { errorResponse, successResponse } = require("../utils/response");
+const { cloudinaryFolderNames } = require("../constants");
+const { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError } = require("../errors/AppError");
 
-// =========================
-// 📤 Upload File
-// =========================
+// // =========================
+// // 📤 Upload File
+// // =========================
 
 
-// 2. Utility function to sanitize filenames for use in public_id
+// // 2. Utility function to sanitize filenames for use in public_id
 const sanitizeFilename = (filename) => {
   return filename
     .replace(/\.[^/.]+$/, "") // Remove extension
@@ -19,21 +25,21 @@ const sanitizeFilename = (filename) => {
     .toLowerCase();
 };
 
+// // --- Main Controller Function ---
 
-
-// --- Main Controller Function ---
-
-const uploadFilesHandler = async (req, res) => {
+exports.uploadFilesHandler = async (req, res, next) => {
   if (!req.files || req.files.length === 0) {
-    return res.status(400).json({ success: false, error: "No files provided" });
+    return next(new BadRequestError("No files provided"));
   }
 
   const session = await File.startSession();
   session.startTransaction();
 
   try {
-    const uploadedFilesData = await Promise.all(
-      req.files.map(async (file) => {
+    const uploadedFilesData = [];
+
+    for (const file of req.files) {
+      try {
         let resourceType = "raw";
         if (file.mimetype.startsWith("image/")) resourceType = "image";
         else if (file.mimetype.startsWith("video/") || file.mimetype.startsWith("audio/"))
@@ -52,15 +58,9 @@ const uploadFilesHandler = async (req, res) => {
           format: fileExtension,
         };
 
-        let result;
-        try {
-          result = await cloudinaryUpload(file.buffer, uploadOptions);
-        } catch (uploadError) {
-          console.error(`❌ Failed to upload ${file.originalname}:`, uploadError.message);
-          return { error: uploadError.message, filename: originalFilename };
-        }
+        const result = await cloudinaryUpload(file.buffer, uploadOptions);
 
-        if (!result) return null;
+        if (!result) throw new Error("Cloudinary upload returned empty response");
 
         const downloadUrl = cloudinary.url(result.public_id, {
           resource_type: resourceType,
@@ -70,13 +70,14 @@ const uploadFilesHandler = async (req, res) => {
           sign_url: true,
         });
 
-        return {
+        // ✅ Push each uploaded file to array instead of return
+        uploadedFilesData.push({
           filename: originalFilename,
           public_id: result.public_id,
           secure_url: result.secure_url,
           downloadUrl,
           resource_type: result.resource_type || "other",
-          format: result?.format,
+          format: result.format,
           size: result.bytes,
           width: result.width || 0,
           height: result.height || 0,
@@ -85,200 +86,207 @@ const uploadFilesHandler = async (req, res) => {
           tags: req.body.tags || [],
           description: req.body.description || "",
           uploadedBy: req.user?._id || null,
-        };
-      })
-    );
+        });
 
-    const successfulUploadsData = uploadedFilesData.filter(
-      (item) => item && !item.error
-    );
-
-    if (successfulUploadsData.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No files were successfully uploaded.",
-        // failed: uploadedFilesData.filter((f) => f?.error),
-      });
+      } catch (uploadErr) {
+        console.log("❌ Cloudinary upload failed for file:", file.originalname, uploadErr.message);
+        uploadedFilesData.push({ filename: file.originalname, errorResponse: uploadErr.message });
+        // Continue with next file, don’t abort
+      }
     }
 
-    // Save files
+    // If no successful uploads
+    const successfulUploadsData = uploadedFilesData.filter((item) => !item.errorResponse);
+    if (successfulUploadsData.length === 0) {
+      return successResponse(res, "No files were successfully uploaded.", uploadedFilesData);
+    }
+
+    // Save successful files
     const createdFiles = await File.insertMany(successfulUploadsData, { session });
+    console.log("CreatedFiles:", createdFiles)
+    console.log("req.body:", req.body.folder);
+
 
     // Update folder reference if folderId provided
-    if (req.body.folder) {
+    if (req.body?.folder) {
       await Folder.findByIdAndUpdate(
         req.body.folder,
-        { $push: { files: { $each: createdFiles.map((f) => f._id) } } },
+        { $push: { files: { $each: createdFiles.map(f => f._id) } } },
         { session }
       );
+
     }
 
     await session.commitTransaction();
     session.endSession();
 
-    res.status(201).json({
-      success: true,
-      message: `${createdFiles.length} files uploaded successfully!`,
-      files: createdFiles,
-      // failed: uploadedFilesData.filter((f) => f?.error),
+    return successResponse(res, `${createdFiles.length} files uploaded successfully!`, {
+      createdFiles,
+      failedFiles: uploadedFilesData.filter(f => f.errorResponse),
     });
+
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-    console.error("❌ General upload error:", err);
-    res.status(500).json({
-      success: false,
-      error: "Upload failed due to server error",
-      details: err.message,
-    });
+    console.log("❌ General upload errorResponse:", err);
+    next(err);
   }
 };
 
 
-
-const getAllFiles = async (req, res) => {
+// ================================
+// 📁 Get All Files + Folders
+// ================================
+exports.getAllFiles = async (req, res, next) => {
   try {
-    const files = await File.find().sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
+    const folderId = req.query.folder || null;
+    const userId = req.user?._id;
+
+    const folders = await Folder.find({
+      parentFolder: folderId,
+      createdBy: userId,
+    });
+
+    const files = await File.find({
+      folder: folderId,
+      uploadedBy: userId,
+    }).sort({ createdAt: -1 });
+
+    console.log("Fetched folders:", folders);
+    return successResponse(res, "Data fetched", {
       count: files.length,
       files,
+      folders,
     });
   } catch (err) {
-    console.error("❌ Fetch files error:", err);
-    res.status(500).json({ success: false, error: "Failed to fetch files" });
+    next(err);
   }
 };
 
-// =========================
-// ⬇️ Download File (redirect to Cloudinary)
-// =========================
-const downloadFile = async (req, res) => {
+// ================================
+// ⬇ Download File
+// ================================
+exports.downloadFile = async (req, res, next) => {
   try {
     const file = await File.findById(req.params.id);
-    if (!file) {
-      return res.status(404).json({ success: false, error: "File not found" });
-    }
+    if (!file) return next(new NotFoundError("File not found"));
+
     return res.redirect(file.downloadUrl);
   } catch (err) {
-    console.error("❌ Download failed:", err);
-    res.status(500).json({ success: false, error: "Download failed" });
+    next(err);
   }
 };
 
-// =========================
-// 🗑️ Delete File (Cloudinary + MongoDB)
-// =========================
-const deleteFile = async (req, res) => {
+// ================================
+// 🗑 Delete File (Permanent)
+// ================================
+exports.deleteFile = async (req, res, next) => {
   try {
-    const file = await File.findById(req.params.id);
-    if (!file) {
-      return res.status(404).json({ success: false, error: "File not found" });
-    }
+    const fileId = req.params.id;
+    if (!fileId) return next(new BadRequestError("File ID is required"));
 
-    // Delete from Cloudinary
+    const file = await File.findById(fileId);
+    if (!file) return next(new NotFoundError("File not found"));
+
+    // 1) Delete from Cloudinary
     const cloudResult = await cloudinaryDelete(
       file.public_id,
-      file.resource_type || "auto"
+      file.resource_type || "raw"
     );
 
-    // Delete from DB
+    console.log("Cloudinary Delete =>", cloudResult);
+
+    // 2) Remove file document from MongoDB
     await file.deleteOne();
 
-    res.status(200).json({
-      success: true,
-      message: "✅ File deleted successfully",
-      cloudResult,
+    // 3) Remove reference from folder if exists
+    if (file.folder) {
+      await Folder.findByIdAndUpdate(file.folder, {
+        $pull: { files: file._id },
+      });
+    }
+
+    // 4) Success
+    return successResponse(res, "File deleted successfully", {
+      fileId,
+      cloudinary: cloudResult,
     });
   } catch (err) {
-    console.error("❌ Delete failed:", err);
-    res.status(500).json({ success: false, error: "Delete failed" });
+    next(err);
   }
 };
 
 
-const getStarredFiles = async (req, res) => {
+// ================================
+// ⭐ Get Starred Files
+// ================================
+exports.getStarredFiles = async (req, res, next) => {
   try {
-    const files = await File.find({ isFavourite: true }).sort({ createdAt: -1 });
-    res.status(200).json({
-      success: true,
+    const userId = req.user?._id;
+
+    const files = await File.find({
+      uploadedBy: userId,
+      isFavourite: true,
+    }).sort({ createdAt: -1 });
+
+    return successResponse(res, "Starred files fetched", {
       count: files.length,
       files,
     });
   } catch (err) {
-    console.error("❌ Fetch files error:", err);
-    res.status(500).json({ success: false, error: "Failed to fetch files" });
+    next(err);
   }
 };
 
-const addRemoveStarred = async (req, res) => {
+// ================================
+// ⭐ Toggle Favourite
+// ================================
+exports.addRemoveStarred = async (req, res, next) => {
   try {
-
-    console.log('fdfd');
-    const id = req?.params?.id || req?.body?.id;
-
-    if (!id) {
-      res.status(400).json({ success: false, error: "File is required." });
-
-    }
-    console.log('fdfd', id);
-
-
-    const file = await File.findById(id)
-
-    if (!file) {
-      res.status(400).json({ success: false, error: "File not found." });
-    }
-
-    file.isFavourite = !file.isFavourite;
-
-    await file.save();
-
-    console.log(file);
-
-    res.status(200).json({
-      success: true,
-      message: file.isDeleted ? "File added to favourite" : "File remoed from favourite",
-      isFavourite: file?.isFavourite,
-      fileId: file._id
-    });
-  } catch (err) {
-    console.error("❌ Fetch files error:", err);
-    res.status(500).json({ success: false, error: "Failed to fetch files" });
-  }
-};
-
-
-const toggleTrashStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!id) {
-      return res.status(400).json({ success: false, error: "File ID is required." });
-    }
+    const id = req.params.id || req.body.id;
+    if (!id) return next(new BadRequestError("File ID is required"));
 
     const file = await File.findById(id);
+    if (!file) return next(new NotFoundError("File not found"));
 
-    if (!file) {
-      return res.status(404).json({ success: false, error: "File not found." });
-    }
-    file.isDeleted = !file.isDeleted;
-
+    file.isFavourite = !file.isFavourite;
     await file.save();
 
-
-    res.status(200).json({
-      success: true,
-      message: file.isDeleted ? "File moved to trash" : "File restored from trash",
-      isDeleted: file.isDeleted,
-      fileId: file._id
+    return successResponse(res, "Favourite status updated", {
+      isFavourite: file.isFavourite,
+      fileId: file._id,
     });
-
   } catch (err) {
-    console.error("❌ Toggle trash status error:", err);
-    res.status(500).json({ success: false, error: "Failed to update file status" });
+    next(err);
   }
 };
 
+// ================================
+// 🗑 Move to Trash / Restore
+// ================================
+exports.toggleTrashStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id) return next(new BadRequestError("File ID is required"));
 
-module.exports = { uploadFilesHandler, getAllFiles, deleteFile, downloadFile, getStarredFiles, addRemoveStarred, toggleTrashStatus };
+    const file = await File.findById(id);
+    if (!file) return next(new NotFoundError("File not found"));
+
+    file.isDeleted = !file.isDeleted;
+    file.trashedAt = file.isDeleted ? new Date() : null;
+
+    await file.save();
+    const msg = file.isDeleted ? "Moved to trash" : "Restored from trash";
+
+    return successResponse(
+      res,
+      msg,
+      {
+        isDeleted: file.isDeleted,
+        fileId: file._id,
+      }
+    );
+  } catch (err) {
+    next(err);
+  }
+};

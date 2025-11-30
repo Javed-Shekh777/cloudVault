@@ -1,17 +1,18 @@
-const upload = require('../config/multerconfig');
-const { createFolder, getFolder, moveToFolder ,getFolders} = require('../controller/folderController');
-const authenticated = require("../middleware/authMiddleware");
-const router = require('express').Router();
+const express = require("express");
+const router = express.Router();
+const { requireAuth } = require("../middleware/auth");
+const {
+  createFolder,
+  getFolder,
+  moveFileToFolder,
+  moveFolderToFolder,
+  getAllFolders
+} = require("../controller/folderController");
 
-
-
-router.route("/create-folder").post(authenticated, createFolder);
-router.route("/get-folder/:id").get(authenticated, getFolder);
-router.route("/get-folders").get(authenticated,getFolders);
-
-router.route("/:folderId/add-file/:fileId").patch(authenticated, moveToFolder);
-
-
-
+router.route("/create-folder").post(requireAuth, createFolder);
+router.route("/get-folder/:id").get(requireAuth, getFolder);
+router.route("/move-file/:folderId/:fileId").patch(requireAuth, moveFileToFolder);
+router.route("/move-folder/:folderId/:targetFolderId").patch(requireAuth, moveFolderToFolder);
+router.route("/get-folders").get(requireAuth, getAllFolders);
 
 module.exports = router;

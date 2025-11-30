@@ -2,11 +2,9 @@
 import Breadcrumbs from "../components/Breadcrumbs.jsx";
 import FileGrid from "../components/FileGrid.jsx";
 import { Spinner } from "../components/Spinner.jsx";
-import { useGetFilesQuery } from "../redux/api.js";
 
 export default function Recent() {
-  const { data, isLoading, error } = useGetFilesQuery();
-  const files = data?.files ?? [];
+  const files =   [];
 
   const recentFiles = files
     .filter(f => new Date(f.updatedAt) > new Date(Date.now() - 7*24*60*60*1000))

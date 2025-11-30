@@ -1,12 +1,12 @@
 // Login.jsx
 import { FcGoogle } from "react-icons/fc";
 import { FaGithub, FaFacebook } from "react-icons/fa";
-import { Link, Navigate ,useNavigate} from "react-router-dom";
-import { useLoginMutation } from "../redux/api";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useState } from "react";
-import { setCredentials } from "../redux/authSlice";
+import { login, setCredentials } from "../redux/authSlice";
 import { useEffect } from "react";
+import toast from 'react-hot-toast';
 
 
 
@@ -14,13 +14,17 @@ export default function Login() {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   console.log(user);
-  const [login, { isLoading }] = useLoginMutation();
   const dispatch = useDispatch();
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
   const [errors, setErrors] = useState({});
+  useEffect(() => {
+    if (user) {
+      return navigate("/");
+    }
+  }, [user]);
 
   const validate = () => {
     const newErrors = {};
@@ -44,27 +48,29 @@ export default function Login() {
     if (!validate()) return; // stop if validation fails
 
     try {
-      const res = await login({
+      const res = await dispatch(login({
         email: form.email,
         password: form.password,
-      }).unwrap();
-
+      })).unwrap();
       console.log(res);
-      dispatch(setCredentials({ user: res.user, token: res.token }));
-
-      // redirect to dashboard
+      dispatch(
+        setCredentials({
+          user: res.data.user,
+          accessToken: res.data.tokens.accessToken,
+          refreshToken: res.data.tokens.refreshToken,
+          deviceId: res.data.tokens.deviceId
+        })
+      );
       window.location.href = "/";
     } catch (err) {
-      console.log(err);
-      setErrors({ api: err.data?.error || "Registration failed" });
+      toast.error(err?.message || "Login failed");
+      console.log("Error", err?.message);
+      setErrors({ api: err.data?.error || "Login failed" });
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      return navigate("/");
-    }
-  }, [user]);
+
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md bg-white shadow-lg rounded-xl sm:p-8 p-5 space-y-5">
@@ -81,6 +87,7 @@ export default function Login() {
               placeholder="you@example.com"
               value={form.email}
               onChange={(e) =>
+
                 setForm({ ...form, email: e.target.value })
               }
               className="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
@@ -92,6 +99,7 @@ export default function Login() {
             <input
               type="password"
               placeholder="••••••••"
+              autoComplete="off"
               value={form.password}
               onChange={(e) =>
                 setForm({ ...form, password: e.target.value })
@@ -103,10 +111,10 @@ export default function Login() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            // disabled={isLoading}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
           >
-            {isLoading ? "Login..." : "Login"}
+            {/* {isLoading ? "Login..." : "Login"} */}Login
           </button>
         </form>
 

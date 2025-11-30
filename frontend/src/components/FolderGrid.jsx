@@ -1,38 +1,43 @@
 import { useState } from "react";
-import FileCard from "./FileCard.jsx";
-import { formatBytes, formatDate } from "../utils/format.js";
 import FolderCard from "./FolderCard.jsx";
-import {useNavigate} from 'react-router-dom'
- 
 
-export default function FolderGrid({ items, view = "grid",onContext,onOpen}) {
+export default function FolderGrid({ items, view = "grid", onContext, onOpen }) {
   const [selected, setSelected] = useState(new Set());
 
+  const clear = () => setSelected(new Set());
+
+  // ---------------- LIST VIEW ----------------
   if (view === "list") {
     return (
-      <div className="card  ">
-        <table className="w-full text-sm  overflow-x-auto">
+      <div className="card">
+        <table className="w-full text-sm overflow-x-auto">
           <thead className="bg-gray-50 text-gray-500">
             <tr>
               <th className="text-left px-4 py-2">Name</th>
               <th className="text-left px-4 py-2">Owner</th>
               <th className="text-left px-4 py-2">Last modified</th>
-              <th className="text-left px-4 py-2 whitespace-nowrap">File size</th>
             </tr>
           </thead>
+
           <tbody>
-            {items.map(it => (
+            {items.map((it) => (
               <tr
                 key={it?._id}
-                className={`border-t border-gray-100 hover:bg-gray-50 cursor-pointer `}
-                // onClick={(e) => toggle(it._id, e.shiftKey || e.ctrlKey || e.metaKey)}
-                // onDoubleClick={() => onOpen?.(it)}
-                onContextMenu={(e) => { e.preventDefault(); onContext?.(e, it, clear); }}
+                className="border-t border-gray-100 hover:bg-gray-50 cursor-pointer"
+                onDoubleClick={() => onOpen?.(it)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onContext?.(e, it, clear);
+                }}
               >
-                <td className="px-4 py-2"><FolderCard item={it} compact /></td>
+                <td className="px-4 py-2">
+                  <FolderCard item={it} compact />
+                </td>
+
                 <td className="px-4 py-2 text-gray-600">{it.owner || "Me"}</td>
-                <td className="px-4 py-2 text-gray-600">{new Date(it.updatedAt).toLocaleString()}</td>
-                <td className="px-4 py-2 text-gray-600">{it.size ? `${(it.size / 1024 / 1024).toFixed(1)} MB` : "-"}</td>
+                <td className="px-4 py-2 text-gray-600">
+                  {new Date(it.updatedAt).toLocaleString()}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -40,27 +45,22 @@ export default function FolderGrid({ items, view = "grid",onContext,onOpen}) {
       </div>
     );
   }
-  
-  return (
-   <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-  {items.map((it) => (
-    <div
-      key={it._id}
-      className="cursor-pointer"
-      // onClick={(e) => toggle(it._id, e.shiftKey || e.ctrlKey || e.metaKey)}
-      // onDoubleClick={() => onOpen?.(it)}     
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onContext?.(e, it, () => setSelected(new Set()));
-      }}
-    >
-      <FolderCard item={it} onOpen={onOpen} />
-    </div>
-  ))}
-</div>
 
+  // ---------------- GRID VIEW ----------------
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+      {items.map((it) => (
+        <div
+          key={it._id}
+          className="cursor-pointer"
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onContext?.(e, it, clear);
+          }}
+        >
+          <FolderCard item={it} onOpen={onOpen} />
+        </div>
+      ))}
+    </div>
   );
 }
-
-
- 

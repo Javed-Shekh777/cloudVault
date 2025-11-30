@@ -1,152 +1,119 @@
-// // Trash.jsx
-// import Breadcrumbs from "../components/Breadcrumbs";
-// import FileGrid from "../components/FileGrid";
-// import Spinner from "../components/Spinner";
-// import { useGetFilesQuery } from "../redux/api";
-
-// export default function Trash() {
-//   const { data, isLoading, error, refetch } = useGetFilesQuery();
-//   const files = data?.files ?? [];
-//   console.log(files);
-
-//   if (isLoading) return <Spinner height="h-20" width="h-20" color="text-blue-500" />;
-//   if (error) return `Error occured ${JSON.stringify(error)}`;
-
-//   return (
-//     <div className="space-y-4">
-//       <Breadcrumbs path={[{ name: "Trash", to: "/trash" }]} />
-
-//       {files?.length > 0 ? <FileGrid items={files.filter(f => f?.isDeleted)} /> : <div className="card p-4 text-sm text-gray-600">
-//         No items in trash. Restore or permanently delete from here.
-//       </div>}
-//     </div>
-//   );
-// }
-
-
-
-
-
-// Trash.jsx
-import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Breadcrumbs from "../components/Breadcrumbs";
 import FileGrid from "../components/FileGrid";
-import { Spinner,ButtonSpinner } from "../components/Spinner";
-
-import { useGetFilesQuery, useToggleTrashStatusMutation, useDeleteFileMutation } from "../redux/api";
+import { deleteFile, fetchFiles } from "../redux/driveSlice";
+import { useEffect } from "react";
+import { useState } from "react";
+import fileActions from "../utils/fileActions";
+import { Spinner } from "../components/Spinner";
+import toast from "react-hot-toast";
 
 export default function Trash() {
-  const { data, isLoading, error, refetch } = useGetFilesQuery();
-  const [restoreFile] = useToggleTrashStatusMutation();
-  const [deleteFile] = useDeleteFileMutation();
-  const [loading, setLoading] = useState(null);
 
-  const files = data?.files?.filter(f => f?.isDeleted) ?? [];
+  const [loader, setLoader] = useState(false);
+
+  const dispatch = useDispatch();
+  const { files, loading } = useSelector(state => state.drive);
+
   const [selectedTrash, setSelectedTrash] = useState([]);
   console.log(selectedTrash);
 
-  if (isLoading) {
-    return <Spinner size="h-20 w-20" color="text-blue-500" />;
-  }
-
-
-
-  if (error) {
-    return `Error occurred ${JSON.stringify(error)}`;
-  }
-
-  const toggleSelect = (id) => {
+  const onSelectTrash = (id) => {
     setSelectedTrash(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
 
-  const handleRestore = async () => {
-    setLoading("restore");
+  useEffect(() => {
+    setLoader(true);
+    dispatch(fetchFiles());
+    setLoader(false);
+  }, []);
+
+
+  const restoreSelected = async () => {
     for (const id of selectedTrash) {
-      await restoreFile(id);
+      await fileActions.trash(id,"Restore");  // isDeleted = false
     }
     setSelectedTrash([]);
-    setLoading(null);
-    refetch();
+    dispatch(fetchFiles());   // re-fetch
   };
 
-  const handleDelete = async () => {
-    setLoading("delete");
 
+  const deleteSelected = async () => {
     for (const id of selectedTrash) {
-      await deleteFile(id);
+      const res = await dispatch(deleteFile(id)).unwrap();
+      console.log(res);
+      toast.success(res?.message ? "File Deleted" : "File Not deleted");
+
     }
     setSelectedTrash([]);
-    setLoading(null);
-    refetch();
+    // dispatch(fetchFiles());   // re-fetch
   };
 
-  const handleEmptyTrash = async () => {
-    setLoading("emptyTrash");
-    const deletedFiles = files?.filter(f => f.isDeleted ?? []);
-    for (const file of deletedFiles) {
-      await deleteFile(file?._id);
+
+  const emptyTrash = async () => {
+    for (const f of trashedFiles) {
+      await dispatch(deleteFile(f._id));
     }
-    setLoading(null);
-    refetch();
+    setSelectedTrash([]);
+    // dispatch(fetchFiles());   // re-fetch
   };
 
+
+  const trashedFiles = files.filter(f => f.isDeleted);
+
+  if (loader) {
+    return <Spinner color="text-blue-500" size={"h-12 w-12"} />;
+  }
 
 
   return (
     <div className="space-y-4">
       <Breadcrumbs path={[{ name: "Trash", to: "/trash" }]} />
 
-      {files.length > 0 ? (
-        <>
-          {/* Action buttons */}
-          <div className="flex items-center justify-between">
-            {/* {selected?.length > 0 && ( */}
-            <div className="flex gap-2 items-center flex-wrap">
-              <button
-                onClick={handleRestore}
-                className={`px-3 py-1 ${loading === "restore" ? "bg-gray-200 text-black" : "bg-green-600"} text-white rounded`}
-              >
-                {loading === "restore" ? <div className="flex items-center">Restoring <ButtonSpinner color="text-green" /></div> : <>Restore ({selectedTrash?.length})</>}
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-3 py-1 bg-red-600 text-white rounded"
-              >
-                {loading === "delete" ? <div className="flex items-center">Deleting <ButtonSpinner /></div> : <>Delete Permanently ({selectedTrash.length})</>}
-              </button>
-            </div>
-            {/* )} */}
+      {/* {selected.length > 0 && ( */}
+      <div className="flex items-center gap-4 mb-3 bg-gray-100 p-3 rounded-lg">
 
-            <button
-              onClick={handleEmptyTrash}
-              className="px-3 py-1 cursor-pointer hover:bg-red-600 bg-white hover:border-0 border text-balck hover:text-white rounded"
-            >
-              {loading === "emptyTrash" ? <div className="flex items-center">Deleting <ButtonSpinner /></div> : <>Empty Trash </>}
+        <button
+          className="btn btn-sm bg-blue-500 text-white"
+          onClick={restoreSelected}
+        >
+          {loading ? <Spinner color="text-black" size={"h-4 w-4"} /> : <>Restore<span className="text-sm p-0">{selectedTrash?.length > 0 && selectedTrash.length}</span></>}
 
 
-            </button>
-          </div>
+        </button>
 
+        <button
+          className="btn btn-sm bg-red-500 text-white"
+          onClick={deleteSelected}
+        >
+          {loading ? <Spinner color="text-black" size={"h-4 w-4"} /> : <>Delete Permanently<span className="text-sm p-0">{selectedTrash?.length > 0 && selectedTrash.length}</span></>}
+        </button>
+      </div>
+      {/* )} */}
 
-          {/* File grid with selection */}
-          <FileGrid
-            items={files}
-            isTrash={true}
-            selectedTrash={selectedTrash}
-            onSelectTrash={toggleSelect}
-          />
-        </>
+      <div className="flex justify-end mb-3">
+        <button
+          className="btn btn-sm bg-red-600 text-white"
+          onClick={emptyTrash}
+        >
+
+          Empty Trash
+        </button>
+      </div>
+
+      {trashedFiles.length ? (
+        <FileGrid items={trashedFiles}
+          trashMode={true}
+          selectedTrash={selectedTrash}
+          onSelectTrash={onSelectTrash}
+        />
       ) : (
         <div className="card p-4 text-sm text-gray-600">
-          Trash is empty. Deleted files will appear here until you restore or permanently delete them.
+          No items in trash.
         </div>
       )}
     </div>
   );
 }
-
-
-
-// ButtonSpinner.jsx

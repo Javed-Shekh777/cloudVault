@@ -11,7 +11,7 @@ export default function Modal({ open, title, children, onClose, actions }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       
       {/* Modal content container */}
-      <div className="relative bg-white card w-full max-w-md p-6 rounded-lg shadow-lg">
+      <div className="relative bg-white  w-full max-w-md p-6 rounded-lg shadow-lg">
         
         {/* Header section */}
         <div className="flex items-center justify-between mb-4">

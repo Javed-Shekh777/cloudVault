@@ -48,6 +48,8 @@ export default function Sidebar({ open, setOpen }) {
         <Item to="/starred" icon={MdStar} label="Starred" setOpen={setOpen} />
         <Item to="/trash" icon={MdDelete} label="Trash" setOpen={setOpen} />
         <Item to="/profile" icon={MdAccountCircle} label="Profile" setOpen={setOpen} />
+        <Item to="/locked" icon={MdAccountCircle} label="Locked" setOpen={setOpen} />
+
 
       </div>
     </aside>

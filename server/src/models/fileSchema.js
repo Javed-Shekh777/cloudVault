@@ -1,92 +1,199 @@
 const mongoose = require('mongoose');
-const { SchemaName } = require('../constants');
+
+const { SchemaName } = require("../constants");
 
 const fileSchema = new mongoose.Schema(
   {
-    // Original file name
+    // ================================
+    // 🔹 File Identity
+    // ================================
     filename: {
       type: String,
       required: true,
       trim: true,
+      index: true,
     },
-    // Cloudinary public ID
+
     public_id: {
       type: String,
       required: true,
       unique: true,
       trim: true,
+      index: true,
     },
-    // Secure CDN URL
+
     secure_url: {
       type: String,
       required: true,
       trim: true,
     },
 
-    // Direct download URL (fl_attachment)
     downloadUrl: {
       type: String,
       trim: true,
     },
-    // Resource type
+
     resource_type: {
       type: String,
       required: true,
       enum: [
-        'image',
-        'video',
-        'audio',
-        'raw',
-        'document',
-        'gif',
-        'pdf',
-        'mp3',
-        'mp4',
-        'other',
+        "image",
+        "video",
+        "audio",
+        "raw",
+        "document",
+        "gif",
+        "pdf",
+        "mp3",
+        "mp4",
+        "other",
       ],
-      default: 'other',
+      default: "other",
     },
-    // File format (jpg, mp4, pdf, etc.)
+
     format: {
       type: String,
       trim: true,
     },
-    // File size in bytes
+
+    // ================================
+    // 🔹 File Meta
+    // ================================
     size: {
       type: Number,
       required: true,
     },
-    // Dimensions (for images/videos)
+
     width: { type: Number, default: 0 },
     height: { type: Number, default: 0 },
-    // Duration (for audio/video)
     duration: { type: Number, default: 0 },
-    // Folder reference
-    folder: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder,default:null },
-    // Tags
+
+    // ================================
+    // 🔹 Linking
+    // ================================
+    folder: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: SchemaName.folder,
+      default: null,
+      index: true,
+    },
+
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: SchemaName.user,
+      required: true,
+      index: true,
+    },
+
+    // ================================
+    // 🔹 Sharing (ACL-Based)
+    // ================================
+    sharedWith: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: SchemaName.user,
+        },
+        permission: {
+          type: String,
+          enum: ["viewer", "editor"],
+          default: "viewer",
+        },
+      },
+    ],
+
+    // Public Share Link Support
+    shareLink: {
+      type: String,
+      default: null,
+    },
+
+    shareExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ================================
+    // 🔹 Versioning
+    // ================================
+    version: {
+      type: Number,
+      default: 1,
+    },
+
+    previousVersions: [
+      {
+        public_id: String,
+        secure_url: String,
+        size: Number,
+        format: String,
+        version: Number,
+        uploadedAt: Date,
+      },
+    ],
+
+    // ================================
+    // 🔹 Extras
+    // ================================
     tags: [{ type: String, trim: true }],
-    // Description/caption
     description: { type: String, trim: true },
-    // Sharing
-    sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user }],
-    // Versioning
-    version: { type: Number, default: 1 },
-    // Uploader reference
-    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user },
-    // Upload date
-    uploadedAt: { type: Date, default: Date.now },
-    isFavourite: { type: Boolean, default: false },
+
+    isFavourite: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    // ================================
+    // 🔹 Soft Delete + Trash
+    // ================================
     isDeleted: {
       type: Boolean,
       default: false,
-      index: true
+      index: true,
     },
+
     deletedAt: {
       type: Date,
-      default: null
-    }
+      default: null,
+    },
+
+    trashedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ================================
+    // 🔹 Security Flags
+    // ================================
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+
+    // To prevent unauthorized edit
+    lockReason: {
+      type: String,
+      default: null,
+    },
+
+    // Activity logs (optional but scalable)
+    activityLog: [
+      {
+        action: String,
+        user: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.user },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
   },
-  { timestamps: true } // adds createdAt & updatedAt automatically
+  {
+    timestamps: true,
+  }
 );
+
+// ================================
+// 🚀 Optimized Indexes (Google Drive Style)
+// ================================
+fileSchema.index({ filename: "text", description: "text", tags: "text" });
 
 module.exports = mongoose.model(SchemaName.file, fileSchema);

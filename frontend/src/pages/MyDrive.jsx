@@ -320,78 +320,54 @@ import FileGrid from "../components/FileGrid";
 import UploadFab from "../components/UploadFab";
 import ContextMenu from "../components/ContextMenu";
 import Modal from "../components/Modal";
-import {
-  useCreateFolderMutation,
-  useGetFilesQuery,
-  useUploadFileMutation,
-  useGetFoldersQuery
-
-} from "../redux/api";
+import { addFilesOptimistic, createFolder, fetchFiles, fetchFolders, uploadFile } from '../redux/driveSlice';
 import { getFileType } from "../utils/fileTypes";
 import { useMemo } from "react";
 import UploadProgressMonitor from "../components/UploadProgressMonitor";
-import { uploadFileWithProgress } from "../services/api";
 import { useEffect } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import { Spinner } from "../components/Spinner";
 import FolderGrid from "../components/FolderGrid";
 import MoveModal from "../components/MoveModal";
+import toast from 'react-hot-toast';
+import { useDispatch, useSelector } from "react-redux";
+import fileActions from "../utils/fileActions";
 
 const getDescendantFolderIds = (folders, parentId) => {
   const result = [];
-  const stack = [parentId];
+  if (!parentId) return result;
+  const stack = [String(parentId)];
 
   while (stack.length > 0) {
     const current = stack.pop();
-    const children = folders.filter(f => f.parentFolder === current);
+    const children = folders.filter(f => String(f.parentFolder) === current);
     children.forEach(child => {
-      result.push(child._id);
-      stack.push(child._id);
+      result.push(String(child._id));
+      stack.push(String(child._id));
     });
   }
 
   return result;
 };
 
+
 export default function MyDrive() {
-  const { data: fileData, isLoading, error, refetch } = useGetFilesQuery();
-  const { data: folderData } = useGetFoldersQuery();
+  const { folderId } = useParams();
+
+  const dispatch = useDispatch();
+  const { files, folders, loading, error } = useSelector(state => state.drive);
+  console.log(files,"Folders", folders,)
   const [path, setPath] = useState([{ name: "My Drive", _id: null }]);
   const currentFolderId = path[path.length - 1]._id;
-
-  const files = fileData?.files || [];
-  const folders = folderData?.folders || [];
-  const moveTargetFolders = folders.filter(f => f._id !== currentFolderId);
-  // const currentFolder = folders.find(f => f._id === currentFolderId);
-  // const allFolderIds = [currentFolderId, ...getDescendantFolderIds(folders, currentFolderId)];
-
-  // const allFilesInTree = files.filter(
-  //   f => f?.isDeleted === false && allFolderIds.includes(f.folder)
-  // );
+  useEffect(() => {
+  dispatch(fetchFiles(currentFolderId));
+}, [currentFolderId]);
 
 
+  const currentFiles = files.filter(f => f.folder === currentFolderId && f.isDeleted === false);
 
-  // 👉 Files for current folder
-  const currentFiles = files.filter(
-    f => f?.isDeleted === false && f.folder === currentFolderId
-  );
-
-  // 👉 Folders inside current folder
-  const currentFolders = folders.filter(
-    f => f?.parentFolder === currentFolderId
-  );
-
-  const rootFiles = files.filter(
-    f => f?.isDeleted === false && f.folder === currentFolderId
-  );
-  const rootFolders = folders.filter(
-    f => f?.parentFolder === currentFolderId
-  );
-
-  console.log(rootFolders);
-  // Mutations
-  const [createFolder] = useCreateFolderMutation();
-  const [uploadFile] = useUploadFileMutation();
+  const currentFolders = folders.filter(f => String(f.parentFolder) === String(currentFolderId));
+  console.log(currentFolders);
 
   // UI states
   const [moveModal, setMoveModal] = useState(null);
@@ -408,6 +384,23 @@ export default function MyDrive() {
   const [menu, setMenu] = useState(null);
 
   const isAnyUploading = uploads.some(u => u.status === "uploading");
+  const allUploadsDone = uploads.every(u => u.status !== "uploading");
+  const allUploadsFailed = uploads.length && uploads.every(u => u.status === "failed");
+
+
+  useEffect(() => {
+    if (!uploads.length) return;
+
+    const allDone = uploads.every(u => u.status !== 'uploading');
+    const allFailed = uploads.every(u => u.status === 'failed');
+
+    if (allDone || allFailed) {
+      setTimeout(() => setUploads([]), 2000);
+      if (allFailed) toast.error("All uploads failed!");
+    }
+  }, [uploads]);
+
+
 
   // Sorting + filtering
   const sortedAndFilteredFiles = useMemo(() => {
@@ -434,8 +427,14 @@ export default function MyDrive() {
       return 0;
     });
     return result;
-  }, [rootFiles, sortCriteria, filterType]);
+  }, [currentFiles, sortCriteria, filterType]);
 
+  useEffect(() => {
+    if (folderId) {
+      const folder = folders.find(f => f._id === folderId);
+      if (folder) setPath([{ name: "My Drive", _id: null }, { name: folder.name, _id: folderId }]);
+    }
+  }, [folderId, folders]);
   // Folder navigation
   const goToFolder = folder => {
     setPath([...path, { name: folder.name, _id: folder._id }]);
@@ -447,10 +446,15 @@ export default function MyDrive() {
   // Folder creation
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) return;
-    createFolder({ name: newFolderName, parentFolder: currentFolderId });
+    dispatch(createFolder({ name: newFolderName, parentFolder: currentFolderId }))
     setOpenNew(false);
     setNewFolderName("");
   };
+
+  const currentFolderIdStr = currentFolderId ? String(currentFolderId) : null;
+  const descendants = currentFolderId ? getDescendantFolderIds(folders, currentFolderId) : [];
+ const moveTargetFolders = folders.filter(f => f.parentFolder === currentFolderId);
+
 
 
   useEffect(() => {
@@ -466,65 +470,107 @@ export default function MyDrive() {
   }, [isAnyUploading, uploads.length]);
 
 
-  const handleFileSelect = async (e) => {
-    const selectedFiles = Array.from(e.target.files);
-    if (selectedFiles.length === 0) return;
 
-    // 1. Initialize upload status for *each* file
+
+
+  // retry logic
+  const handleRetry = (id) => {
+    const item = uploads.find(u => u.id === id);
+    if (!item) return;
+
+    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'uploading', progress: 0, error: null } : u));
+
+    dispatch(uploadFile({
+      file: item.fileObj,
+      folderId: currentFolderId,
+      onProgress: (percent) => {
+        setUploads(prev => prev.map(u => u.id === id ? { ...u, progress: percent } : u));
+      }
+    })).unwrap()
+      .then(res => {
+        setUploads(prev => prev.map(u => u.id === uploadItem.id
+          ? { ...u, status: 'completed', progress: 100, response: res }
+          : u
+        ));
+
+        if (res) {
+          if (Array.isArray(res)) dispatch(addFilesOptimistic(res));
+          else if (res.data && Array.isArray(res.data)) dispatch(addFilesOptimistic(res.data));
+          else dispatch(addFilesOptimistic(res));
+        }
+
+        // 🟢 FIX: force refresh
+        dispatch(fetchFiles(currentFolderId));
+        dispatch(fetchFolders());
+      })
+
+      .catch(err => {
+        const message = err?.message || err?.response?.data?.message || "Upload failed";
+        setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'failed', error: message } : u));
+        toast.error(`${item.fileName} failed: ${message}`);
+      });
+  };
+
+  const handleCancelUpload = (id) => {
+    setUploads(prev => prev.map(u => u.id === id ? { ...u, status: 'canceled', error: 'Cancelled by user' } : u));
+  };
+
+  const handleRemoveUpload = (id) => {
+    setUploads(prev => prev.filter(u => u.id !== id));
+  };
+
+
+  const handleFileSelect = async (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (!selectedFiles.length) return;
+
     const newUploads = selectedFiles.map(file => ({
-      id: `${file.name}-${Date.now()}`, // Unique ID for tracking
+      id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       fileName: file.name,
-      status: 'uploading',
+      fileObj: file,
+      status: 'uploading',  // uploading | completed | failed | canceled
       progress: 0,
+      error: null,
+      response: null
     }));
 
     setUploads(prev => [...prev, ...newUploads]);
 
-    // 2. Upload *each* file individually using Axios with progress tracking
-    selectedFiles.forEach(file => {
-      // We use the file name as a temporary identifier for state updates
-      const fileNameIdentifier = file.name;
+    // Parallel upload
+    newUploads.forEach(uploadItem => {
+      dispatch(uploadFile({
+        file: uploadItem.fileObj,
+        folderId: currentFolderId,
+        onProgress: (percent) => {
+          setUploads(prev => prev.map(u => u.id === uploadItem.id ? { ...u, progress: percent } : u));
+        }
+      })).unwrap()
+        .then(res => {
+          setUploads(prev => prev.map(u => u.id === uploadItem.id
+            ? { ...u, status: 'completed', progress: 100, response: res }
+            : u
+          ));
 
-      // Call the custom axios function with a progress callback
-      uploadFileWithProgress(file, currentFolderId, (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-
-        // Update the specific file's progress in the state
-        setUploads(prev => prev.map(upload => {
-          if (upload.fileName === fileNameIdentifier && upload.status === 'uploading') {
-            return { ...upload, progress: percentCompleted };
+          if (res) {
+            if (Array.isArray(res)) dispatch(addFilesOptimistic(res));
+            else if (res.data && Array.isArray(res.data)) dispatch(addFilesOptimistic(res.data));
+            else dispatch(addFilesOptimistic(res));
           }
-          return upload;
-        }));
-      })
-        .then(response => {
-          // Success: update status to 'completed'
-          setUploads(prev => prev.map(upload => {
-            if (upload.fileName === fileNameIdentifier) {
-              return { ...upload, status: 'completed', progress: 100 };
-            }
-            return upload;
-          }));
-          // After successful uploads, refetch the file list to show new files
-          refetch();
+
+          // 🟢 FIX: force refresh
+          dispatch(fetchFiles(currentFolderId));
+          dispatch(fetchFolders());
         })
-        .catch(error => {
-          // Failure: update status to 'failed'
-          console.error(`Upload failed for ${fileNameIdentifier}:`, error);
-          setUploads(prev => prev.map(upload => {
-            if (upload.fileName === fileNameIdentifier) {
-              return { ...upload, status: 'failed' };
-            }
-            return upload;
-          }));
+
+        .catch(err => {
+          console.log(err)
+          const message = err?.message || err?.response?.data?.message || "Upload failed";
+          setUploads(prev => prev.map(u => u.id === uploadItem.id ? { ...u, status: 'failed', error: message } : u));
+          toast.error(`${uploadItem.fileName} failed: ${message}`);
         });
     });
-
-    // 3. Optional cleanup of completed uploads after a short delay
-    setTimeout(() => {
-      setUploads(prev => prev.filter(upload => upload.status === 'uploading'));
-    }, 5000);
   };
+
 
 
 
@@ -543,8 +589,10 @@ export default function MyDrive() {
     setNewFolderName('');
   };
 
-  if (isLoading) return <Spinner size="h-20 w-20" color="text-green-500" />;
-  if (error) return `Error loading files ${JSON.stringify(error)}`;
+  // if (isLoading) return <Spinner size="h-20 w-20" color="text-green-500" />;
+  // if (error) return `Error loading files ${JSON.stringify(error)}`;
+  // if (loading) return <FileFolderSkeleton count={8} />;
+  if (error) return <div className="text-red-500">Error loading files</div>;
 
   return (
     <div className="space-y-4">
@@ -604,16 +652,29 @@ export default function MyDrive() {
         }}
       />
 
-      {menu && (
-        <ContextMenu
+      {menu && (<ContextMenu
           x={menu.x}
           y={menu.y}
           item={menu.item}
+          folders={moveTargetFolders}
           onClose={() => setMenu(null)}
-          setMoveModal={setMoveModal}
-          folders={moveTargetFolders} // pass folders list from parent
-
+          // onAction={{ 
+          //   open: (file) => window.open(file.secure_url, "_blank"),
+          //   rename: (file) => console.log("Rename", file),
+          //   trash: (file) => console.log("Trash", file),
+          //   move: (file, folder) => console.log("Move", file, "to", folder),
+          //   copy: (file) => console.log("Copy", file),
+          //   download: (file) => {
+          //     const link = document.createElement("a");
+          //     link.href = file.downloadUrl;
+          //     link.download = file.filename || "downloaded_file";
+          //     link.click();
+          //     link.remove();
+          //   },
+          // }}
+          onAction={fileActions}
         />
+
       )}
 
       {/* Modal for new folder */}
@@ -623,18 +684,8 @@ export default function MyDrive() {
         onClose={handleCancel}
         actions={
           <>
-            <button
-              className="bg-red-400 hover:bg-red-600 text-white px-2 py-1 rounded"
-              onClick={() => setOpenNew(false)}
-            >
-              Cancel
-            </button>
-            <button
-              className="bg-blue-400 hover:bg-blue-600 text-white px-2 py-1 rounded"
-              onClick={handleCreateFolder}
-            >
-              Create
-            </button>
+            <button onClick={() => setOpenNew(false)}>Cancel</button>
+            <button onClick={handleCreateFolder}>Create</button>
           </>
         }
       >
@@ -643,9 +694,9 @@ export default function MyDrive() {
           value={newFolderName}
           onChange={e => setNewFolderName(e.target.value)}
           placeholder="Enter folder name"
-          className="w-full border p-2 rounded-md"
         />
       </Modal>
+
 
       {moveModal?.open && (
         <MoveModal
@@ -655,11 +706,27 @@ export default function MyDrive() {
           onClose={() => setMoveModal(null)}
         />
       )}
+      <UploadProgressMonitor
+        uploads={uploads}
+        onCloseMonitor={() => setUploads([])}
+        onCancelUpload={handleCancelUpload}
+        onRetryUpload={handleRetry}
+        onRemove={handleRemoveUpload}
+      />
 
 
-      <UploadProgressMonitor uploads={uploads} onCloseMonitor={() => setUploads([])} />
+
     </div>
   );
 }
 
-
+// Skeleton component
+function FileFolderSkeleton({ count = 6 }) {
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="animate-pulse bg-gray-300 h-20 rounded-md"></div>
+      ))}
+    </div>
+  );
+}
