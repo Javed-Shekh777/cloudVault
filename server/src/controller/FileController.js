@@ -139,6 +139,7 @@ exports.uploadFilesHandler = async (req, res, next) => {
 // ================================
 exports.getAllFiles = async (req, res, next) => {
   try {
+
     const folderId = req.query.folder || null;
     const userId = req.user?._id;
 
@@ -153,10 +154,11 @@ exports.getAllFiles = async (req, res, next) => {
     }).sort({ createdAt: -1 });
 
     console.log("Fetched folders:", folders);
-    return successResponse(res, "Data fetched", {
-      count: files.length,
+
+     return successResponse(res, "File deleted successfully", {
+       count: files.length,
       files,
-      folders,
+      folders
     });
   } catch (err) {
     next(err);

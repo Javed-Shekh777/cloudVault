@@ -68,7 +68,7 @@ userSchema.methods.setPassword = async function (plainPassword) {
 // Password verifier
 userSchema.methods.verifyPassword = async function (plainPassword) {
   if (!this.password) return false;
-
+  console.log("Verifying password for user ", plainPassword);
   try {
     const ok = await argon2.verify(this.password, plainPassword + Tokens.passwordPaper);
     return ok;
