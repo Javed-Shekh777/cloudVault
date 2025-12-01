@@ -63,8 +63,9 @@ export default function Login() {
       );
       window.location.href = "/";
     } catch (err) {
+
       toast.error(err?.message || "Login failed");
-      console.log("Error", err?.message);
+      console.log("Error", err);
       setErrors({ api: err.data?.error || "Login failed" });
     }
   };
