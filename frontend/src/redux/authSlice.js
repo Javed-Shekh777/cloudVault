@@ -36,6 +36,7 @@ export const login = createAsyncThunk(
       const res = await axiosInstance.post("/auth/localLogin", credentials); // should set refresh cookie
       return res.data;
     } catch (err) {
+      console.log("Login Error:", err);
       return rejectWithValue(err.response?.data || err.message);
     }
   }
