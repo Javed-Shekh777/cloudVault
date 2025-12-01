@@ -194,6 +194,7 @@ async function verifyAuthMail(req, res, next) {
     return successResponse(res, "Email verified successfully");
 
   } catch (error) {
+
     next(error);
   }
 }
@@ -233,6 +234,8 @@ async function loginManual(req, res, next) {
 
     return successResponse(res, "Login successful", { user: safeUser, tokens });
   } catch (err) {
+    console.log("RegiLoginster Error:", err);
+
     next(err);
   }
 }

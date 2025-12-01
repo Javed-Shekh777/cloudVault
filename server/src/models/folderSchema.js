@@ -17,7 +17,7 @@ const folderSchema = new mongoose.Schema(
       index: true,
     },
 
-   // Parent folder
+    // Parent folder
     parentFolder: { type: mongoose.Schema.Types.ObjectId, ref: SchemaName.folder, default: null, index: true },
 
     // Children folders
@@ -26,8 +26,8 @@ const folderSchema = new mongoose.Schema(
     // Files in folder
     files: [{ type: mongoose.Schema.Types.ObjectId, ref: SchemaName.file }],
 
- 
-    
+
+
     // 🔥 Sharing
     sharedWith: [
       {
@@ -48,8 +48,18 @@ const folderSchema = new mongoose.Schema(
     trashedAt: { type: Date, default: null },
 
     // Locking
+    // inside folderSchema definition (add these fields)
+    encryption: {
+      wrappedKey: { type: String, default: null },   // base64 ciphertext of AES folder key
+      wrappedKeyIv: { type: String, default: null }, // base64 iv for wrapping operation
+      salt: { type: String, default: null },         // base64 salt for PBKDF2
+      unlockMethod: { type: String, enum: ['pin', 'password'], default: 'pin' },
+      failedAttempts: { type: Number, default: 0 },
+      unlockTimeout: { type: Date, default: null }
+    },
     isLocked: { type: Boolean, default: false },
-    lockReason: String
+    lockReason: { type: String, default: null }
+
   },
   { timestamps: true }
 );

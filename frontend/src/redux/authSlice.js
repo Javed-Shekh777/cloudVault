@@ -81,6 +81,25 @@ export const refreshAuth = createAsyncThunk("auth/refresh", async (_, { rejectWi
   }
 });
 
+
+export const updateProfile = createAsyncThunk(
+  "auth/updateProfile",
+  async (formData, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.patch("/user/update-profile", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return res.data;
+    }
+    catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -213,6 +232,23 @@ const authSlice = createSlice({
         s.error = "Session expired";
         localStorage.removeItem("user");
         localStorage.removeItem("accessToken");
+      })
+
+      .addCase(updateProfile.pending, (s) => {
+        s.loading = true;
+        s.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (s, a) => {
+        s.loading = false;
+        s.error = null;
+        console.log("Profile Update Payload", a.payload);
+        s.user = a.payload.data.user;
+        localStorage.setItem("user", JSON.stringify(a.payload.data.user));
+      }
+      )
+      .addCase(updateProfile.rejected, (s, a) => {
+        s.loading = false;
+        s.error = a.payload || a.error?.message || "Profile update failed";
       });
   },
 });

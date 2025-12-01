@@ -1,6 +1,6 @@
 import { useSelector, useDispatch } from "react-redux";
 import { useState } from "react";
-import { logout, logoutAsync, setCredentials } from "../redux/authSlice";
+import { logout, logoutAsync, setCredentials, updateProfile } from "../redux/authSlice";
 
 export default function Profile() {
     const { user } = useSelector((state) => state.auth);
@@ -22,14 +22,13 @@ export default function Profile() {
                 formData.append("profileImage", form.profileImage);
             }
             console.log(formData);
-            // const res = await updateProfile(formData).unwrap();
-            // console.log("Updated:", res);
+            const res = await dispatch(updateProfile(formData)).unwrap();
+            console.log("Updated:", res);
 
             // update redux state with new user
-            // dispatch(setCredentials({ user: res.data.user }));
 
         } catch (err) {
-            console.error("Err",err);
+            console.error("Err", err);
         }
     };
 

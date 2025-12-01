@@ -8,6 +8,7 @@ const fileRouter = require("./routes/FileRoute");
 const authRouter = require("./routes/authRoute");
 const userRouter = require("./routes/userRoute");
 const folderRouter = require("./routes/folderRoute");
+const lockedRouter = require("./routes/lockedRoute");
 
 const { NotFoundError } = require("./errors/AppError");
 const errorHandler = require("./middleware/errorHandler");
@@ -35,6 +36,8 @@ app.use("/api/v1/files", fileRouter);
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/folders", folderRouter);
+app.use("/api/v1/locked-folder", lockedRouter);
+
 
 // 404 handler
 app.use((req, res, next) => next(new NotFoundError("Route not found")));

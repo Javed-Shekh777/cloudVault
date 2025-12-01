@@ -166,9 +166,10 @@ const fileSchema = new mongoose.Schema(
     // ================================
     // 🔹 Security Flags
     // ================================
-    isLocked: {
-      type: Boolean,
-      default: false,
+    encryption: {
+      iv: { type: String, default: null },       // base64 iv used to encrypt this file
+      isEncrypted: { type: Boolean, default: false },
+      encryptedPath: { type: String, default: null } // storage path to encrypted blob (if different)
     },
 
     // To prevent unauthorized edit

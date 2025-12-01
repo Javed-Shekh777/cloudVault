@@ -19,6 +19,17 @@ const instance = axios.create({
 instance.interceptors.request.use((config) => {
   try {
     const token = localStorage.getItem("accessToken");
+      
+
+    const lockedToken = localStorage.getItem("lockedToken");
+    const lockedSessionId = localStorage.getItem("lockedSessionId");
+    console.log("Locked Token in Axios", lockedToken, lockedSessionId);
+
+    if (lockedToken) config.headers["x-locked-lockedToken"] = lockedToken;
+    if (lockedSessionId) config.headers["x-locked-lockedSessionId"] = lockedSessionId;
+
+
+
     if (token) config.headers.Authorization = `Bearer ${token}`;
   } catch (e) { /* ignore */ }
   return config;

@@ -7,7 +7,8 @@ const SchemaName = {
     trash: "Trash",
     session: "Session",
     shareLink: "ShareLink",
-    verificaToken: "VerificationToken"
+    verificaToken: "VerificationToken",
+    lockedAccessSession:"LockedAccessSession"
 };
 
 
@@ -44,6 +45,9 @@ const Tokens = {
     passwordPaper: process.env.PASSWORD_PEPPER,
     webToken: process.env.WEB_TOKEN_SECRET,
     webTokenExp: process.env.WEB_TOKEN_EXPIRY || "15m",
+    lockToken: process.env.LOCKED_TOKEN_SECRET  ,
+    lockTokenExp: process.env.LOCKED_TOKEN_EXPIRY || "30m",
+
 };
 
 
