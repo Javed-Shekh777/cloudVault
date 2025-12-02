@@ -243,6 +243,7 @@ async function loginManual(req, res, next) {
 // ---------------- Refresh Token ----------------
 async function refreshTokenHandler(req, res, next) {
   try {
+    console.log("fdkfndskfsd");
     const oldRefresh = req.body?.refreshToken || req?.cookies?.refreshToken;
     if (!oldRefresh) throw new BadRequestError("Refresh token missing");
     console.log(oldRefresh);

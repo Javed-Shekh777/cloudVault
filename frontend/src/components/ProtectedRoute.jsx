@@ -11,35 +11,60 @@ export default function ProtectedRoute() {
   const [checking, setChecking] = useState(true);
   const isMounted = useRef(true);
 
+  // useEffect(() => {
+  //   isMounted.current = true;
+  //   const tryRefresh = async () => {
+  //     // If we already have user+accessToken, no need to refresh right now
+  //     if (accessToken && user) {
+  //       if (isMounted.current) setChecking(false);
+  //       return;
+  //     }
+
+  //     try {
+  //       console.log('Attempting token refresh...');
+  //       // Try refresh (backend reads httpOnly refresh cookie)
+  //       const res = await dispatch(refreshAuth()).unwrap();
+  //       console.log(res);
+  //       // success -> auth state updated by slice
+  //     } catch (err) {
+  //       console.log(err);
+  //       // ignore here; result will be redirect below
+  //     } finally {
+  //       if (isMounted.current) setChecking(false);
+  //     }
+  //   };
+
+  //   tryRefresh();
+
+  //   return () => {
+  //     isMounted.current = false;
+  //   };
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, []); // run once on mount
+
   useEffect(() => {
-    isMounted.current = true;
-    const tryRefresh = async () => {
-      // If we already have user+accessToken, no need to refresh right now
-      if (accessToken && user) {
-        if (isMounted.current) setChecking(false);
-        return;
-      }
+  isMounted.current = true;
 
-      try {
-        console.log('Attempting token refresh...');
-        // Try refresh (backend reads httpOnly refresh cookie)
-        const res = await dispatch(refreshAuth()).unwrap();
-        console.log(res);
-        // success -> auth state updated by slice
-      } catch (err) {
-        // ignore here; result will be redirect below
-      } finally {
-        if (isMounted.current) setChecking(false);
-      }
-    };
+  const tryRefresh = async () => {
+    try {
+      console.log("Trying to refresh...");
+      await dispatch(refreshAuth()).unwrap(); 
+    } catch (err) {
+      console.log("Refresh failed:", err);
 
-    tryRefresh();
+      // ❗ If backend said user not found → local storage clear
+      localStorage.removeItem("user");
+      localStorage.removeItem("accessToken");
+    } finally {
+      if (isMounted.current) setChecking(false);
+    }
+  };
 
-    return () => {
-      isMounted.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount
+  tryRefresh();
+
+  return () => (isMounted.current = false);
+}, []);
+
 
   if (checking) {
     return (

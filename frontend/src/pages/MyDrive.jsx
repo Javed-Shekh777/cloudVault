@@ -593,6 +593,7 @@ export default function MyDrive() {
   // if (isLoading) return <Spinner size="h-20 w-20" color="text-green-500" />;
   // if (error) return `Error loading files ${JSON.stringify(error)}`;
   // if (loading) return <FileFolderSkeleton count={8} />;
+  console.log(error);
   if (error) return <div className="text-red-500">Error loading files</div>;
 
   return (
