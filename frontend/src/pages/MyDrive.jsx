@@ -360,7 +360,7 @@ export default function MyDrive() {
   const [path, setPath] = useState([{ name: "My Drive", _id: null }]);
   const currentFolderId = path[path.length - 1]._id;
   useEffect(() => {
-  dispatch(fetchFiles(currentFolderId));
+  dispatch(fetchFiles({ folderId: currentFolderId, isLocked: false }));
 }, [currentFolderId]);
 
 
@@ -446,7 +446,7 @@ export default function MyDrive() {
   // Folder creation
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) return;
-    dispatch(createFolder({ name: newFolderName, parentFolder: currentFolderId }))
+    dispatch(createFolder({ name: newFolderName, parentFolder: currentFolderId ,  isLocked: false}));
     setOpenNew(false);
     setNewFolderName("");
   };
@@ -483,6 +483,7 @@ export default function MyDrive() {
     dispatch(uploadFile({
       file: item.fileObj,
       folderId: currentFolderId,
+      isLocked: false,
       onProgress: (percent) => {
         setUploads(prev => prev.map(u => u.id === id ? { ...u, progress: percent } : u));
       }
@@ -500,8 +501,8 @@ export default function MyDrive() {
         }
 
         // 🟢 FIX: force refresh
-        dispatch(fetchFiles(currentFolderId));
-        dispatch(fetchFolders());
+        dispatch(fetchFiles({ folderId: currentFolderId, isLocked: false }));
+        dispatch(fetchFolders({ isLocked: false }));
       })
 
       .catch(err => {
@@ -558,8 +559,8 @@ export default function MyDrive() {
           }
 
           // 🟢 FIX: force refresh
-          dispatch(fetchFiles(currentFolderId));
-          dispatch(fetchFolders());
+          dispatch(fetchFiles({ folderId: currentFolderId, isLocked: false }));
+          dispatch(fetchFolders({isLocked: false}));
         })
 
         .catch(err => {

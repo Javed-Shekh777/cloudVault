@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDispatch } from "react-redux";
 
 // export default function EnterPassword({ setToken }) {
-export default function EnterPassword() {
+export default function EnterPassword({startLockedFolderTimeout}) {
 
     const [password, setPassword] = useState("");
 
@@ -10,6 +10,7 @@ export default function EnterPassword() {
 
     const handleLogin = async () => {
         const res = await dispatch(setUnlocked({ unlockMethod: "password", credential: password })).unwrap();
+        startLockedFolderTimeout();
     };
 
 

@@ -11,6 +11,7 @@ const initialState = {
     unlockToken: localStorage.getItem("lockedToken") || null,
     localSessionId: localStorage.getItem("lockedSessionId") || null,
     error: null,
+    currentFolder: null,
 };
 
 // router.route("/status").get(requireAuth, getLockedStatus);
@@ -20,19 +21,35 @@ const initialState = {
 // router.route("/").get(requireAuth, getLockedData)
 
 
-export const getLockedData = createAsyncThunk("locked/getLockedData", async (_, { rejectWithValue }) => {
+export const getLockedData = createAsyncThunk("locked/getLockedData", async (folder, { rejectWithValue }) => {
     try {
-        const res = await axiosInstance.get("/locked-folder/");
+        console.log("Fetching locked data for folder:", folder);
+        const res = await axiosInstance.get(`/locked-folder`,{params: { folder: folder || null }});
         console.log("Thunk", res.data);
-
         return res.data;
     } catch (error) {
         console.log("Thunk error", error);
-
-
         return rejectWithValue(error.response.data);
     }
 });
+
+
+export const fetchLockedFiles = createAsyncThunk(
+  "drive/fetchLockedFiles",
+  async ({ folderId, isLocked = false }, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.get("/files", { params: { folder: folderId || "", isLocked: isLocked === true ? 'true' : 'false' } });
+      // Expecting server to return { data: { files: [...] } } or { files: [...] }
+      console.log("Fetch files response:", res.data);
+      // if (res.data?.data?.files) return { files: res.data.data.files };
+      // if (res.data?.files) return { files: res.data.files };
+      // if (res.data?.data) return { files: res.data.data }; // fallback
+      return res.data?.data || res.data; // fallback
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
 
 export const getLockedStatus = createAsyncThunk("locked/getLockedStatus", async (_, { rejectWithValue }) => {
     try {
@@ -96,6 +113,24 @@ const lockedSlice = createSlice({
     name: "locked",
     initialState,
     reducers: {
+        clearLockedFolderState: (state) => {
+            state.folders = [];
+            state.currentFolder = null;
+            state.files = [];
+            state.loading = false;
+            state.error = null;
+        },
+        // helper to set current folder (useful when navigating breadcrumbs)
+        setLockedCurrentFolder: (state, action) => {
+            state.currentFolder = action.payload;
+        },
+        // optimistic add file(s)
+        addLockedFilesOptimistic: (state, action) => {
+            const payload = action.payload?.createdFiles || action.payload;
+            console.log(payload);
+            if (Array.isArray(payload)) state.lockedFiles.push(...payload);
+            else state.lockedFiles.push(payload);
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -155,4 +190,6 @@ const lockedSlice = createSlice({
 });
 
 // export { getLockedData, getLockedStatus, setLockedFolder };
+export const {addLockedFilesOptimistic,clearLockedFolderState,setLockedCurrentFolder } = lockedSlice.actions;
+
 export default lockedSlice.reducer;

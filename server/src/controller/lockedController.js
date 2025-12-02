@@ -39,7 +39,7 @@ exports.setLocked = async (req, res, next) => {
         await user.save();
         console.log(user);
 
-        return successResponse(res, "Locked folder set up successfully", { token: token });
+        return successResponse(res, "Locked folder set up successfully");
     } catch (err) {
         console.log(err);
         next(err);
@@ -173,6 +173,7 @@ exports.getLockedData = async (req, res, next) => {
             isLocked: true
         }).sort({ createdAt: -1 });
 
+        console.log("Fetched locked folders:", folders);
         return successResponse(res, "Locked data fetched", {
             lockedFiles: files,
             lockedFolders: folders,

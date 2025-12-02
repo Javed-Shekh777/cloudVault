@@ -22,7 +22,7 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   useEffect(() => {
     if (user) {
-      return navigate("/");
+      navigate("/");
     }
   }, [user]);
 
@@ -61,7 +61,7 @@ export default function Login() {
           deviceId: res.data.tokens.deviceId
         })
       );
-      window.location.href = "/";
+      navigate("/");
     } catch (err) {
 
       toast.error(err?.message || "Login failed");

@@ -31,6 +31,7 @@ exports.uploadFilesHandler = async (req, res, next) => {
   if (!req.files || req.files.length === 0) {
     return next(new BadRequestError("No files provided"));
   }
+  console.log(req.body);
 
   const session = await File.startSession();
   session.startTransaction();
@@ -86,6 +87,7 @@ exports.uploadFilesHandler = async (req, res, next) => {
           tags: req.body.tags || [],
           description: req.body.description || "",
           uploadedBy: req.user?._id || null,
+          isLocked: req.body.isLocked === 'true' || false,
         });
 
       } catch (uploadErr) {
@@ -101,10 +103,11 @@ exports.uploadFilesHandler = async (req, res, next) => {
       return successResponse(res, "No files were successfully uploaded.", uploadedFilesData);
     }
 
+    console.log("Successful uploads data:", successfulUploadsData);
     // Save successful files
     const createdFiles = await File.insertMany(successfulUploadsData, { session });
-    console.log("CreatedFiles:", createdFiles)
-    console.log("req.body:", req.body.folder);
+    // console.log("CreatedFiles:", createdFiles)
+    // console.log("req.body:", req.body.folder);
 
 
     // Update folder reference if folderId provided
@@ -141,22 +144,26 @@ exports.getAllFiles = async (req, res, next) => {
   try {
 
     const folderId = req.query.folder || null;
+    const isLocked = req.query.isLocked || null;
+    console.log("isLocked:", isLocked);
     const userId = req.user?._id;
 
     const folders = await Folder.find({
       parentFolder: folderId,
       createdBy: userId,
+      isLocked: isLocked === 'true' ? true : isLocked === 'false' ? false : { $in: [true, false] }
     });
 
     const files = await File.find({
       folder: folderId,
       uploadedBy: userId,
+      isLocked: isLocked === 'true' ? true : isLocked === 'false' ? false : { $in: [true, false] }
     }).sort({ createdAt: -1 });
 
-    console.log("Fetched folders:", folders);
+    // console.log("Fetched folders:", folders);
 
-     return successResponse(res, "File deleted successfully", {
-       count: files.length,
+    return successResponse(res, "File deleted successfully", {
+      count: files.length,
       files,
       folders
     });
@@ -288,6 +295,25 @@ exports.toggleTrashStatus = async (req, res, next) => {
         fileId: file._id,
       }
     );
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+exports.addRemoveToLockedFolder = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    console.log(id);
+    if (!id) return next(new BadRequestError("File ID is required"));
+    const file = await File.findById(id);
+    if (!file) return next(new NotFoundError("File not found"));
+    file.isLocked = !file.isLocked;
+    await file.save();
+    return successResponse(res, `File ${file.isLocked ? "move to" : "removed from"} locked folder`, {
+      fileId: file._id,
+      isLocked: file.isLocked,
+    });
   } catch (err) {
     next(err);
   }

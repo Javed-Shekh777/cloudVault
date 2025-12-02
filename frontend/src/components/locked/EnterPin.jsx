@@ -4,13 +4,15 @@ import { getLockedData, getLockedStatus, setLocked, setUnlocked } from '../../re
 
 // export default function EnterPin({ setToken }) {
 
-export default function EnterPin() {
+export default function EnterPin({startLockedFolderTimeout}) {
 
     const [pin, setPin] = useState("");
     const dispatch = useDispatch();
 
     const handleLogin = async () => {
         const res = await dispatch(setUnlocked({ unlockMethod: "pin", credential: pin })).unwrap();
+        startLockedFolderTimeout();
+
     };
 
     return (

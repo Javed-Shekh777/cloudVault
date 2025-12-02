@@ -163,6 +163,10 @@ const fileSchema = new mongoose.Schema(
       default: null,
     },
 
+    isLocked: { type: Boolean, default: false },
+    lockReason: { type: String, default: null },
+
+
     // ================================
     // 🔹 Security Flags
     // ================================
@@ -172,11 +176,7 @@ const fileSchema = new mongoose.Schema(
       encryptedPath: { type: String, default: null } // storage path to encrypted blob (if different)
     },
 
-    // To prevent unauthorized edit
-    lockReason: {
-      type: String,
-      default: null,
-    },
+
 
     // Activity logs (optional but scalable)
     activityLog: [

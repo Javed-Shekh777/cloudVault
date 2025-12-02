@@ -1,6 +1,6 @@
 // src/utils/fileActions.js
 
-import { toggleTrashFile } from "../redux/driveSlice";
+import { moveFileToFolder, toggleLockedFile, toggleTrashFile } from "../redux/driveSlice";
 import toast from "react-hot-toast";
 import { store } from "../redux/store";
 
@@ -18,8 +18,8 @@ const fileActions = {
         store.dispatch(toggleTrashFile(file))
             .unwrap()
             .then(res => {
-                console.log("From Trash Toggle",res);
-                toast.success(res?.message||"Action successful");
+                console.log("From Trash Toggle", res);
+                toast.success(res?.message || "Action successful");
             })
             .catch(err => {
                 toast.error(err.message || "Failed to update trash status");
@@ -27,11 +27,30 @@ const fileActions = {
     },
 
     move: (file, folder) => {
-        console.log("Move:", file, "to:", folder);
+        store.dispatch(moveFileToFolder({ folderId: folder?._id, fileId: file?._id }))
+            .unwrap()
+            .then(res => {
+                console.log("From move ", res);
+                toast.success(res?.message || "Action successful");
+            })
+            .catch(err => {
+                toast.error(err.message || "Failed to update trash status");
+            });
     },
 
     copy: (file) => {
         console.log("Copy:", file);
+    },
+    moveLocked: (file) => {
+        store.dispatch(toggleLockedFile(file))
+            .unwrap()
+            .then(res => {
+                console.log("From Locked Toggle", res);
+                toast.success(res?.message || "Action successful");
+            })
+            .catch(err => {
+                toast.error(err.message || "Failed to update locked status");
+            });
     },
 
     download: (file) => {

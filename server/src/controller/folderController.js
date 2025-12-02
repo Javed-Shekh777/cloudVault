@@ -7,13 +7,16 @@ const { successResponse } = require("../utils/response");
 const createFolder = async (req, res, next) => {
   try {
     const userId = req.user?._id;
-    const { name, parentFolder } = req.body;
+    const { name, parentFolder, isLocked } = req.body;
     if (!name) return next(new BadRequestError("Folder name is required"));
 
-    const folder = await Folder.create({ name, parentFolder: parentFolder || null, createdBy: userId });
+    const folder = await Folder.create({ name, parentFolder: parentFolder || null, createdBy: userId, isLocked: isLocked || false });
 
     // Add to parent's children
-    if (parentFolder) await Folder.findByIdAndUpdate(parentFolder, { $push: { childrenFolders: folder._id } });
+    if (parentFolder) await Folder.findByIdAndUpdate(parentFolder, {
+      $push: { childrenFolders: folder._id },
+      isLocked: isLocked || false
+    });
 
     return successResponse(res, "Folder created successfully", folder);
   } catch (err) { next(err); }
@@ -30,6 +33,8 @@ const getFolder = async (req, res, next) => {
       .populate({ path: "childrenFolders", match: { isDeleted: false } })
       .populate({ path: "files", match: { isDeleted: false } })
       .populate("parentFolder");
+
+      
 
     if (!folder) return next(new NotFoundError("Folder not found"));
 
@@ -91,7 +96,9 @@ const moveFolderToFolder = async (req, res, next) => {
 const getAllFolders = async (req, res, next) => {
   try {
     const userId = req.user?._id;
-    const folders = await Folder.find({ createdBy: userId, isDeleted: false });
+    const isLocked = req.params.isLocked === 'true' ? true : req.params.isLocked === 'false' ? false : null;
+    console.log("isLocked param:", isLocked);
+    const folders = await Folder.find({ createdBy: userId, isDeleted: false, isLocked: isLocked === null ? { $in: [true, false] } : isLocked });
     return successResponse(res, "Folders fetched successfully", folders);
   } catch (err) { next(err); }
 };

@@ -12,9 +12,9 @@ import { axiosInstance } from "../services/axiosInstance";
 
 export const fetchFiles = createAsyncThunk(
   "drive/fetchFiles",
-  async (folderId, { rejectWithValue }) => {
+  async ({ folderId, isLocked = false }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.get("/files", { params: { folder: folderId || "" } });
+      const res = await axiosInstance.get("/files", { params: { folder: folderId || "", isLocked: isLocked === true ? 'true' : 'false' } });
       // Expecting server to return { data: { files: [...] } } or { files: [...] }
       console.log("Fetch files response:", res.data);
       // if (res.data?.data?.files) return { files: res.data.data.files };
@@ -29,11 +29,12 @@ export const fetchFiles = createAsyncThunk(
 
 export const uploadFile = createAsyncThunk(
   "drive/uploadFile",
-  async ({ file, folderId, onProgress }, { rejectWithValue }) => {
+  async ({ file, folderId, isLocked = false, onProgress }, { rejectWithValue }) => {
     try {
       const formData = new FormData();
       formData.append("files", file);  // ✅ check backend expects 'files'
       if (folderId) formData.append("folder", folderId);
+      if (isLocked) formData.append("isLocked", isLocked);
       const res = await axiosInstance.post("/files/upload", formData, {
         onUploadProgress: (e) => {
           if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total));
@@ -51,9 +52,9 @@ export const uploadFile = createAsyncThunk(
 // FOLDERS
 export const fetchFolders = createAsyncThunk(
   "drive/fetchFolders",
-  async (_, { rejectWithValue }) => {
+  async ({ isLocked = false }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.get("/folders/get-folders");
+      const res = await axiosInstance.get("/folders/get-folders", { params: { isLocked: isLocked === true ? 'true' : 'false' } });
       // backend might return { data: [...] } or [...]
       return res.data?.data ?? res.data;
     } catch (err) {
@@ -64,9 +65,9 @@ export const fetchFolders = createAsyncThunk(
 
 export const fetchFolderContents = createAsyncThunk(
   "drive/fetchFolderContents",
-  async (folderId, { rejectWithValue }) => {
+  async ({ folderId, isLocked = false }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.get(`/folders/get-folder/${folderId}`);
+      const res = await axiosInstance.get(`/folders/get-folder/${folderId}`, { params: { isLocked: isLocked === true ? 'true' : 'false' } });
       // expecting { data: { folder, files } }
       return res.data?.data ?? res.data;
     } catch (err) {
@@ -91,7 +92,8 @@ export const moveFileToFolder = createAsyncThunk(
   "drive/moveFileToFolder",
   async ({ folderId, fileId }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.patch(`/folders/${folderId}/add-file/${fileId}`);
+
+      const res = await axiosInstance.patch(`/folders/move-file/${folderId}/${fileId}`);
       return res.data?.data ?? res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -113,6 +115,19 @@ export const toggleTrashStatus = createAsyncThunk(
     }
   }
 );
+
+export const toggleLockedFile = createAsyncThunk(
+  "drive/toggleLockedFile",
+  async (fileId, { rejectWithValue }) => {
+    try {
+      const res = await axiosInstance.patch(`/files/add-remove-locked/${fileId}`);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
 
 export const toggleStar = createAsyncThunk(
   "drive/toggleStar",
@@ -272,7 +287,8 @@ const driveSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(moveFileToFolder.fulfilled, (state) => {
+      .addCase(moveFileToFolder.fulfilled, (state,action) => {
+        console.log(action.payload);
         state.loading = false;
       })
       .addCase(moveFileToFolder.rejected, (state, action) => {
@@ -292,6 +308,21 @@ const driveSlice = createSlice({
         state.loading = false;
         state.error = action.payload ?? action.error?.message;
       })
+
+      // toggleLockedFileStatus
+      .addCase(toggleLockedFile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(toggleLockedFile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.files = state.files.filter(f => f?._id !== action.payload.data?.fileId);
+      })
+      .addCase(toggleLockedFile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload ?? action.error?.message;
+      })
+
 
       // toggleStar
       .addCase(toggleStar.pending, (state) => {

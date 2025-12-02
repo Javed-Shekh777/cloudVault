@@ -6,7 +6,8 @@ const {
   downloadFile, 
   getStarredFiles, 
   addRemoveStarred, 
-  toggleTrashStatus 
+  toggleTrashStatus, 
+  addRemoveToLockedFolder
 } = require('../controller/FileController');
 const { requireAuth } = require("../middleware/auth");
 const router = require('express').Router();
@@ -31,5 +32,11 @@ router.patch("/add-remove-star/:id", requireAuth, addRemoveStarred);
 
 // Toggle trash
 router.patch("/add-remove-trash/:id", requireAuth, toggleTrashStatus);
+
+// router.route("/trash/:id").patch(requireAuth, toggleTrashStatus);
+
+// router.route("/trash").get(requireAuth, getAllFiles);
+
+router.route("/add-remove-locked/:id").patch(requireAuth,addRemoveToLockedFolder);
 
 module.exports = router;
