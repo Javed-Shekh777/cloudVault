@@ -18,19 +18,16 @@ const instance = axios.create({
 // Request: attach access token from localStorage
 instance.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem("accessToken");
-      
-
+    const accessToken = localStorage.getItem("accessToken");
     const lockedToken = localStorage.getItem("lockedToken");
     const lockedSessionId = localStorage.getItem("lockedSessionId");
+
     console.log("Locked Token in Axios", lockedToken, lockedSessionId);
 
     if (lockedToken) config.headers["x-locked-lockedToken"] = lockedToken;
     if (lockedSessionId) config.headers["x-locked-lockedSessionId"] = lockedSessionId;
+    if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
 
-
-
-    if (token) config.headers.Authorization = `Bearer ${token}`;
   } catch (e) { /* ignore */ }
   return config;
 });
@@ -50,6 +47,7 @@ const processQueue = (error, token = null) => {
 instance.interceptors.response.use(
   (res) => res,
   async (error) => {
+    console.log(error);
     const originalRequest = error.config;
     const status = error.response?.status;
     const message = error.response?.data?.message;
@@ -62,6 +60,7 @@ instance.interceptors.response.use(
         return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         }).then((token) => {
+          console.log("fdskfs", token);
           originalRequest.headers.Authorization = "Bearer " + token;
           return instance(originalRequest);
         });
@@ -73,6 +72,8 @@ instance.interceptors.response.use(
       try {
         // use raw axios (without interceptors) to call refresh
         const refreshRes = await axios.post(`${baseURL}/auth/refresh`, {}, { withCredentials: true });
+        console.log("Refresh Response", refreshRes);
+
         const { accessToken, user } = refreshRes.data;
 
         // set new tokens in localStorage
@@ -86,6 +87,7 @@ instance.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return instance(originalRequest);
       } catch (err) {
+        console.log("fdsfnkdsf",err);
         processQueue(err, null);
         isRefreshing = false;
         // refresh failed -> clear local storage and let caller handle redirect
@@ -101,3 +103,5 @@ instance.interceptors.response.use(
 
 export const axiosInstance = instance;
 export default instance;
+
+

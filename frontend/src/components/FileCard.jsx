@@ -3,27 +3,23 @@
 import { MdStarBorder, MdStar } from "react-icons/md";
 import { typeIcon, typeColor } from "../utils/fileTypes.js";
 import { formatBytes, formatDate } from "../utils/format.js";
+import {toggleStar} from '../redux/driveSlice.js'
 import { useState } from "react";
+import { useDispatch } from "react-redux";
 
 export default function FileCard({ item, compact = false, trashMode = false, selectedTrash = [] }) {
   const Icon = typeIcon(item);
   const colorClass = typeColor(item);
+  const dispatch = useDispatch();
 
   // ⭐ local state for favourite
   const [fav, setFav] = useState(item.isFavourite);
 
   // ⭐ simple toggle without RTK
-  const toggleStar = async () => {
+  const toggleStarStatus = async () => {
     setFav(prev => !prev);
-
-    try {
-      await fetch(`/api/files/toggle-fav/${item._id}`, {
-        method: "PATCH"
-      });
-    } catch (err) {
-      setFav(prev => !prev); // rollback
-      console.error("Star toggle failed", err);
-    }
+    await dispatch(toggleStar(item._id)).unwrap();
+ 
   };
 
   return compact ? (
@@ -67,7 +63,7 @@ export default function FileCard({ item, compact = false, trashMode = false, sel
 
         <button
           type="button"
-          onClick={toggleStar}
+          onClick={toggleStarStatus}
           className="btn-ghost p-1 rounded-full hover:bg-gray-100"
         >
           {fav ? (

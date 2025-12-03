@@ -1,5 +1,5 @@
 export function getDeviceId() {
-  let deviceId = localStorage.getItem("device_id");
+  let deviceId = localStorage.getItem("deviceId");
 
   if (!deviceId) {
     deviceId = crypto.randomUUID();   // 👈 generate UUID

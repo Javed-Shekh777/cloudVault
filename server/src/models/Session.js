@@ -13,11 +13,14 @@ const SessionSchema = new Schema(
     userAgent: String,
     createdAt: { type: Date, default: Date.now },
     lastUsedAt: { type: Date, default: Date.now },
-
+    language:{type:String},
+    screen:{type:String},
+    os:{type:String},
     // EMAIL VERIFICATION OTP
     emailOTP: String,
     webToken: String,
     emailExpiry: { type: Date, default: Date.now },
+
 
 
 

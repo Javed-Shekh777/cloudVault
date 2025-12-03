@@ -7,6 +7,7 @@ import { useState } from "react";
 import { login, setCredentials } from "../redux/authSlice";
 import { useEffect } from "react";
 import toast from 'react-hot-toast';
+import { getDeviceId } from "../utils/common";
 
 
 
@@ -43,14 +44,42 @@ export default function Login() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const getOSDetails = () => {
+    const userAgent = navigator.userAgent;
+    console.log(userAgent);
+    let os = 'Unknown OS';
+
+    if (userAgent.indexOf('Win') !== -1) os = 'Windows';
+    if (userAgent.indexOf('Mac') !== -1) os = 'macOS';
+    if (userAgent.indexOf('X11') !== -1) os = 'UNIX';
+    if (userAgent.indexOf('Linux') !== -1) os = 'Linux';
+    if (userAgent.indexOf('Android') !== -1) os = 'Android';
+    if (userAgent.indexOf('iPhone') !== -1 || userAgent.indexOf('iPad') !== -1) os = 'iOS';
+
+    return os;
+  };
+
+  const getDeviceInfo = () => {
+    const os = getOSDetails();
+    const language = navigator.language;
+    const userAgent = navigator.userAgent
+    const screen = `${window.screen.width}x${window.screen.height}`;
+    return { os, language, screen, userAgent };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return; // stop if validation fails
 
     try {
+      const deviceId = getDeviceId();
+      const deviceInfo = getDeviceInfo();
+      console.log(deviceInfo);
       const res = await dispatch(login({
         email: form.email,
         password: form.password,
+        deviceId,
+        deviceInfo
       })).unwrap();
       console.log(res);
       dispatch(

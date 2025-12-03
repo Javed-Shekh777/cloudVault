@@ -1,10 +1,13 @@
 import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from 'react-router-dom';
 import { useState } from "react";
 import { logout, logoutAsync, setCredentials, updateProfile } from "../redux/authSlice";
+import toast from 'react-hot-toast'
 
 export default function Profile() {
-    const { user } = useSelector((state) => state.auth);
+    const { user ,loading} = useSelector((state) => state.auth);
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const [form, setForm] = useState({
         name: user?.name || "",
@@ -24,6 +27,7 @@ export default function Profile() {
             console.log(formData);
             const res = await dispatch(updateProfile(formData)).unwrap();
             console.log("Updated:", res);
+            toast.success(res?.message);
 
             // update redux state with new user
 
@@ -40,6 +44,8 @@ export default function Profile() {
 
     const logoutHandle = () => {
         dispatch(logoutAsync());
+        navigate("/login");
+
     }
     return (
         <div className="max-w-md mx-auto bg-white shadow rounded-lg p-6 space-y-4">
@@ -77,7 +83,7 @@ export default function Profile() {
                     // disabled={isLoading}
                     className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
                 >
-                    {/* {isLoading ? "Updating..." : "Update Profile"} */}Update Profile
+                    {loading ? "Updating..." : "Update Profile"}
                 </button>
                 <div className="flex w-full  justify-end">
                     <button

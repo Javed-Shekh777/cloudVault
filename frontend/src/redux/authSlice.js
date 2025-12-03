@@ -14,6 +14,7 @@ const initialState = {
   accessToken: localStorage.getItem("accessToken") || null,
   loading: false,
   error: null,
+  isLoggingOut :false, // ✅ add this flag
 };
 
 
@@ -41,6 +42,16 @@ export const login = createAsyncThunk(
     }
   }
 );
+
+// verify current accessToken by calling backend
+export const verifyMe = createAsyncThunk("auth/verifyMe", async (_, { rejectWithValue }) => {
+  try {
+    const res = await axiosInstance.get("/auth/me");
+    return res.data; // expecting { status, message, data: { user } }
+  } catch (err) {
+    return rejectWithValue(err.response?.data || err.message);
+  }
+});
 
 // REGISTER
 export const register = createAsyncThunk(
@@ -121,6 +132,7 @@ const authSlice = createSlice({
       state.accessToken = null;
       state.loading = false;
       state.error = null;
+      state.isLoggingOut=true;
       localStorage.removeItem("user");
       localStorage.removeItem("accessToken");
     },
@@ -137,39 +149,44 @@ const authSlice = createSlice({
         state.error = action.payload?.message || "Mail Verification failed";
       })
       // login
-      .addCase(login.pending, (s) => {
-        s.loading = true;
-        s.error = null;
+      .addCase(login.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
-      .addCase(login.fulfilled, (s, a) => {
-        s.loading = false;
+      .addCase(login.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log(action.payload);
         // payload shape assumed: { user, tokens: { accessToken } }
-        const payload = a.payload || {};
-        if (payload.tokens?.accessToken) {
-          s.accessToken = payload.tokens.accessToken;
-          localStorage.setItem("accessToken", payload.tokens.accessToken);
-        }
+        const payload = action.payload?.data || {}; // FIXED
+
         if (payload.user) {
-          s.user = payload.user;
+          state.user = payload.user;
           localStorage.setItem("user", JSON.stringify(payload.user));
         }
         localStorage.removeItem("pendingUser");
+        state.loading = false;
+
+
+        if (payload.accessToken) {
+          state.accessToken = payload.accessToken;
+          localStorage.setItem("accessToken", payload.accessToken);
+        }
 
       })
-      .addCase(login.rejected, (s, a) => {
-        s.loading = false;
-        s.error = a.payload || a.error?.message || "Login failed";
+      .addCase(login.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error?.message || "Login failed";
       })
 
       // register
-      .addCase(register.pending, (s) => {
-        s.loading = true;
-        s.error = null;
+      .addCase(register.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
-      .addCase(register.fulfilled, (s, a) => {
-        s.loading = false;
-        const payload = a.payload?.data || {};
-        console.log("Paylaod", a.payload);
+      .addCase(register.fulfilled, (state, action) => {
+        state.loading = false;
+        const payload = action.payload?.data || {};
+        console.log("Paylaod", action.payload);
         localStorage.setItem("pendingUser", JSON.stringify({
           email: payload?.user?.email,
           sessionId: payload.sessionId,
@@ -178,78 +195,104 @@ const authSlice = createSlice({
 
         }));
       })
-      .addCase(register.rejected, (s, a) => {
-        s.loading = false;
-        s.error = a.payload || a.error?.message || "Register failed";
+      .addCase(register.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error?.message || "Register failed";
       })
 
       // logout
-      .addCase(logoutAsync.fulfilled, (s) => {
-        s.user = null;
-        s.accessToken = null;
-        s.loading = false;
-        s.error = null;
+      .addCase(logoutAsync.fulfilled, (state) => {
+        state.user = null;
+        state.accessToken = null;
+        state.loading = false;
+        state.error = null;
         localStorage.removeItem("user");
 
         localStorage.removeItem("accessToken");
       })
-      .addCase(logoutAsync.rejected, (s) => {
+      .addCase(logoutAsync.rejected, (state) => {
         // clear client state even if server-side logout failed
-        s.user = null;
-        s.accessToken = null;
-        s.loading = false;
-        s.error = null;
+        state.user = null;
+        state.accessToken = null;
+        state.loading = false;
+        state.error = null;
+        state.isLoggingOut=true;
         localStorage.removeItem("user");
         localStorage.removeItem("accessToken");
       })
 
-      // refresh
-      .addCase(refreshAuth.pending, (s) => {
-        s.loading = true;
-        console.log('RejeStartedcted');
-
-        s.error = null;
+      // verifyMe
+      .addCase(verifyMe.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
-      .addCase(refreshAuth.fulfilled, (s, a) => {
-        s.loading = false;
-        console.log('fdfddsfdsddddddd');
-        const payload = a.payload || {};
-        if (payload.accessToken) {
-          s.accessToken = payload.accessToken;
-          localStorage.setItem("accessToken", payload.accessToken);
-        }
+      .addCase(verifyMe.fulfilled, (state, action) => {
+        state.loading = false;
+        const payload = action.payload?.data || {};
+        console.log(action.payload);
         if (payload.user) {
-          s.user = payload.user;
+          state.user = payload.user;
           localStorage.setItem("user", JSON.stringify(payload.user));
         }
       })
-      .addCase(refreshAuth.rejected, (s) => {
+      .addCase(verifyMe.rejected, (state, action) => {
+        state.loading = false;
+        state.user = null;
+        state.accessToken = null;
+        localStorage.removeItem("user");
+        localStorage.removeItem("accessToken");
+        state.error = action.payload || action.error?.message || "Verification failed";
+      })
+
+      // refresh
+      .addCase(refreshAuth.pending, (state) => {
+        state.loading = true;
+        console.log('RejeStartedcted');
+
+        state.error = null;
+      })
+      .addCase(refreshAuth.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log('Refresk State',action.payload);
+        const payload = action.payload || {};
+        if (payload.accessToken) {
+          state.accessToken = payload.accessToken;
+          localStorage.setItem("accessToken", payload.accessToken);
+        }
+        if (payload.user) {
+          state.user = payload.user;
+          localStorage.setItem("user", JSON.stringify(payload.user));
+        }
+      })
+      .addCase(refreshAuth.rejected, (state, action) => {
         // if refresh fails, clear auth
         console.log('Rejected');
 
-        s.user = null;
-        s.accessToken = null;
-        s.loading = false;
-        s.error = "Session expired";
+        state.user = null;
+        state.accessToken = null;
+        state.loading = false;
         localStorage.removeItem("user");
         localStorage.removeItem("accessToken");
+
+        state.error = action.error?.message || "Session expired";
+
       })
 
-      .addCase(updateProfile.pending, (s) => {
-        s.loading = true;
-        s.error = null;
+      .addCase(updateProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
       })
-      .addCase(updateProfile.fulfilled, (s, a) => {
-        s.loading = false;
-        s.error = null;
-        console.log("Profile Update Payload", a.payload);
-        s.user = a.payload.data.user;
-        localStorage.setItem("user", JSON.stringify(a.payload.data.user));
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+        console.log("Profile Update Payload", action.payload);
+        state.user = action.payload.data.user;
+        localStorage.setItem("user", JSON.stringify(action.payload.data.user));
       }
       )
-      .addCase(updateProfile.rejected, (s, a) => {
-        s.loading = false;
-        s.error = a.payload || a.error?.message || "Profile update failed";
+      .addCase(updateProfile.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || action.error?.message || "Profile update failed";
       });
   },
 });

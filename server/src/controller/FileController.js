@@ -10,6 +10,7 @@ const Folder = require("../models/folderSchema");
 const { errorResponse, successResponse } = require("../utils/response");
 const { cloudinaryFolderNames } = require("../constants");
 const { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError } = require("../errors/AppError");
+const crypto = require("crypto");
 
 // // =========================
 // // 📤 Upload File
@@ -144,25 +145,46 @@ exports.getAllFiles = async (req, res, next) => {
   try {
 
     const folderId = req.query.folder || null;
+
     const isLocked = req.query.isLocked || null;
     console.log("isLocked:", isLocked);
     const userId = req.user?._id;
+    console.log(typeof isLocked);
+    // File.find({ uploadedBy: userId }).then((r) => { console.log(r) });
+    let lockedFilter = {};
+
+    if (typeof isLocked === "string") {
+      if (isLocked.toLowerCase() === "true") lockedFilter.isLocked = true;
+      if (isLocked.toLowerCase() === "false") lockedFilter.isLocked = false;
+    } else if (typeof isLocked === "boolean") {
+      lockedFilter.isLocked = isLocked;
+    }
+
+
 
     const folders = await Folder.find({
-      parentFolder: folderId,
+      parentFolder: folderId || null,
       createdBy: userId,
-      isLocked: isLocked === 'true' ? true : isLocked === 'false' ? false : { $in: [true, false] }
-    });
-
-    const files = await File.find({
-      folder: folderId,
-      uploadedBy: userId,
-      isLocked: isLocked === 'true' ? true : isLocked === 'false' ? false : { $in: [true, false] }
+      ...lockedFilter
+      // isLocked: isLocked === 'true' ? true : isLocked === 'false' ? false : { $in: [true, false] }
     }).sort({ createdAt: -1 });
 
-    // console.log("Fetched folders:", folders);
+    const files = await File.find({
+      folder: folderId || null,
+      uploadedBy: userId,
+      ...lockedFilter
 
-    return successResponse(res, "File deleted successfully", {
+      // isLocked: isLocked === 'true' ? true : isLocked === 'false' ? false : { $in: [true, false] }
+    }).sort({ createdAt: -1 });
+
+
+    // console.log("Fetched folders:", files);
+    console.log(isLocked === "true" ? true :
+      isLocked === "false" ? false :
+        { $exists: true })
+    console.log("isLocked:", isLocked);
+
+    return successResponse(res, "File fetched successfully", {
       count: files.length,
       files,
       folders
@@ -171,6 +193,9 @@ exports.getAllFiles = async (req, res, next) => {
     next(err);
   }
 };
+
+
+
 
 // ================================
 // ⬇ Download File
@@ -318,3 +343,95 @@ exports.addRemoveToLockedFolder = async (req, res, next) => {
     next(err);
   }
 };
+
+
+exports.shareFile = async (req, res, next) => {
+  try {
+    const { fileId } = req.params;
+
+    if (!fileId) throw new NotFoundError("FileIs is required");
+
+    const { targetUser, permission } = req.body;
+
+    if (!targetUser) {
+      throw new BadRequestError("Share with user is required.");
+    }
+
+    const file = await File.findById(fileId);
+    if (!file) throw new NotFoundError("File not found");
+
+    const isShared = file.sharedWith?.find((u) => u?.user.toString() === targetUser);
+
+    if (isShared) {
+      isShared.permission = permission;
+    } else {
+      file.sharedWith.push({ user: targetUser, permission });
+    }
+    await file.save();
+
+    return successResponse(res, "File shared", file);
+
+  } catch (error) {
+    next(error);
+  }
+}
+
+exports.getSharedWithMe = async (req, res, next) => {
+  try {
+    const userId = req?.user._id;
+
+    const files = await File.find({
+      "sharedWith.user": userId,
+      isDeleted: false,
+      isLocked: false
+    }).populate("uploadedBy", "name email profileImage")
+      .populate("sharedWith.user", "name email");
+    return successResponse(res, "File shared", files);
+
+
+  } catch (error) {
+    next(error);
+  }
+}
+
+exports.createPublicShareLink = async (req, res, next) => {
+  try {
+    const { fileId } = req.params;
+
+    if (!fileId) throw new BadRequestError("FileID is required.");
+
+    const file = await File.findById(fileId);
+    if (!file) throw new NotFoundError("File not found");
+
+    const token = crypto.randomBytes(32).toString("hex");
+
+    file.shareLink = token;
+    file.shareExpiresAt = Date.now() + 1000 * 60 * 60 * 24;
+    file.isNew = true;
+    await file.save();
+
+    return successResponse(res, "Public link created", file);
+  } catch (error) {
+    next(error);
+  }
+}
+
+exports.openShareLink = async (req, res, next) => {
+  try {
+    const { token, fileId } = req.params;
+
+    if (!token || !fileId) throw new BadRequestError("Token is required.");
+
+    const file = await File.find({
+      _id: fileId,
+      shareLink: token,
+      shareExpiresAt: { $gt: Date.now() }
+    });
+
+    if (!file) throw new NotFoundError("Invalid or expired link");
+
+    return successResponse(res, "Found shared file", file);
+  } catch (error) {
+    next(error);
+  }
+}

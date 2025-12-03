@@ -26,14 +26,21 @@ async function requireAuth(req, res, next) {
     if (!payload.did)
       return next(new UnauthorizedError("Token missing deviceId"));
 
-    const session = await Session.findOne({
-      userId: payload.uid,
-      deviceId: payload.did,
-      revoked: false
-    });
+   const session = await Session.findOne({
+  userId: payload.uid,
+  deviceId: payload.did,
+  revoked: false
+}).sort({ createdAt: -1 }); // latest created session first
 
-    if (!session)
-      return next(new UnauthorizedError("Session invalid or expired"));
+
+    if (!session) {
+      return next(new UnauthorizedError("Session expired or invalid. Login again"));
+    }
+
+     // (Optional) 5️⃣ EXPIRY CHECK
+    if (session.expiresAt && session.expiresAt < new Date()) {
+      return next(new UnauthorizedError("Session expired. Please login again."));
+    }
 
     session.lastUsedAt = new Date();
     session.save().catch(() => {});
@@ -44,6 +51,7 @@ async function requireAuth(req, res, next) {
 
     next();
   } catch (err) {
+    console.log(err);
     next(err);
   }
 }

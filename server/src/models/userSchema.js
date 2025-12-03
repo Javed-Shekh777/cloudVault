@@ -44,8 +44,15 @@ const userSchema = new Schema(
       unlockMethod: { type: String, enum: ['pin', 'password'], default: 'pin' },
       failedAttempts: { type: Number, default: 0 },
       unlockTimeout: { type: Date, default: null }
-    }
+    },
 
+    locale: { type: String, default: 'en-US' },
+    timezone: { type: String, default: 'Asia/Kolkata' },
+    twoFA: {
+      enabled: { type: Boolean, default: false },
+      secret: { type: String, select: false },
+      recoveryCodes: [{ type: String, select: false }],
+    },
   },
   { timestamps: true }
 );

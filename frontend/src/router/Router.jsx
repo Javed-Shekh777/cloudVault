@@ -15,6 +15,8 @@ import VerifyAccountOTP from "../pages/VerifyAccountOTP";
 import EmailVerifiedPage from "../pages/EmailVerifiedPage";
 import VerifyHandler from "../pages/VerifyHandler";
 import LockedPage from "../pages/LockedPage";
+import SettingsLayout from "../pages/settings/SettingsLayout";
+import ProfileTab from "../pages/settings/ProfileTab";
 
 const router = createBrowserRouter([
   {
@@ -33,6 +35,31 @@ const router = createBrowserRouter([
           { path: "recent", element: <Recent /> },
           { path: "profile", element: <Profile /> },
           { path: "locked", element: <LockedPage /> },
+          //    <Route path="settings" element={<SettingsLayout />}>
+          // <Route path="profile" element={<ProfileTab />} />
+          // <Route path="security" element={<SecurityTab />} />
+          // <Route path="notifications" element={<NotificationsTab />} />
+          // <Route path="storage" element={<StorageTab />} />
+          // <Route path="appearance" element={<AppearanceTab />} />
+          // <Route path="privacy" element={<PrivacyTab />} />
+          // <Route path="dev" element={<DeveloperTab />} />
+          // <Route path="danger" element={<DangerTab />} />
+          {
+            path: "setting", element: <SettingsLayout />,
+            // children: [
+            //   { path: "profile", element: <ProfileTab /> },
+            //   { path: "security", element: <SecurityTab /> },
+            //   { path: "notifications", element: <NotificationsTab /> },
+            //   { path: "storage", element: <StorageTab /> },
+            //   { path: "appearance", element: <AppearanceTab /> },
+            //   { path: "privacy", element: <PrivacyTab /> },
+            //   { path: "dev", element: <DeveloperTab /> },
+            //   { path: "danger", element: <DangerTab /> },
+
+
+            // ]
+          },
+
 
           { path: "file", element: <FileExplorer /> },
 

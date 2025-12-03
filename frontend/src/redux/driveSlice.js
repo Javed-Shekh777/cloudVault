@@ -134,7 +134,8 @@ export const toggleStar = createAsyncThunk(
   async (fileId, { rejectWithValue }) => {
     try {
       const res = await axiosInstance.patch(`/files/add-remove-star/${fileId}`);
-      return { fileId, data: res.data?.data ?? res.data };
+      console.log(res.data);
+      return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
@@ -287,7 +288,7 @@ const driveSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(moveFileToFolder.fulfilled, (state,action) => {
+      .addCase(moveFileToFolder.fulfilled, (state, action) => {
         console.log(action.payload);
         state.loading = false;
       })
@@ -329,8 +330,17 @@ const driveSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(toggleStar.fulfilled, (state) => {
+      .addCase(toggleStar.fulfilled, (state, action) => {
         state.loading = false;
+        state.files = state.files.filter(f => {
+
+          if (f?._id === action.payload.data?.fileId) {
+            f.isFavourite = action.payload?.data?.isFavourite;
+          }
+          return f;
+        });
+
+
       })
       .addCase(toggleStar.rejected, (state, action) => {
         state.loading = false;

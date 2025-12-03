@@ -176,7 +176,7 @@ export default function ContextMenu({ x, y, item, onClose, onAction, folders }) 
       <MenuItem icon={MdOpenInNew} label="Open" onClick={() => onAction?.open(item)} />
       <MenuItem icon={MdEdit} label="Rename" onClick={() => onAction?.rename(item)} />
       <MenuItem icon={MdDelete} label={item?.isDeleted ? "Restore" : "Trash"} onClick={() => onAction?.trash(item?._id, "Trash")} />
-
+      {console.log(item.isLocked)}
       <MenuItem icon={MdLockClock} label={item?.isLocked ? "Remove from Locked" : "Move To Locked"} onClick={() => onAction?.moveLocked(item?._id, "Lock")} />
 
 
@@ -210,8 +210,8 @@ export default function ContextMenu({ x, y, item, onClose, onAction, folders }) 
           <MdDriveFileMove />
           Move to
         </button>
-        <ul className="absolute right-0 top-full hidden group-hover:block bg-white border border-gray-200 rounded max-h-60 overflow-y-auto z-[1000]  shadow-lg">
-          {renderFolders(folders,onAction,item)}
+        <ul className="absolute right-0 top-full hidden group-hover:block bg-white border border-gray-200 rounded max-h-60 overflow-y-auto z-`1000`  shadow-lg">
+          {renderFolders(folders, onAction, item)}
         </ul>
       </div>
 
@@ -235,18 +235,18 @@ function MenuItem({ icon: Icon, label, danger, onClick }) {
   );
 }
 
-const renderFolders = (foldersList,onAction,item,level = 0) => {
+const renderFolders = (foldersList, onAction, item, itemlevel = 0) => {
   return foldersList.map(f => (
     <li key={f._id}>
       <button
-        className={`w-full flex items-center text-left px-${3 + level * 2} py-1 hover:bg-gray-100`}
+        className={`w-full flex items-center text-left px-${3 + itemlevel * 2} py-1 hover:bg-gray-100`}
         onClick={() => onAction?.move?.(item, f)}
       >
         <MdOutlineSubdirectoryArrowRight className="mr-1" /> 📁 {f.name}
       </button>
       {/* Recursively render children if exist */}
       {f.childrenFolders && f.childrenFolders.length > 0 && (
-        <ul className="pl-2">{renderFolders(f.childrenFolders,onAction,itemlevel + 1)}</ul>
+        <ul className="pl-2">{renderFolders(f.childrenFolders, onAction, itemlevel + 1)}</ul>
       )}
     </li>
   ));

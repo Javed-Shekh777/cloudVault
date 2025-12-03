@@ -26,31 +26,86 @@ function parseExpiryToMs(expStr) {
 }
 
 // Create session + tokens helper
-async function createSessionAndTokens(user, deviceInfo = {}, ip = "") {
-  const deviceId = deviceInfo.deviceId || `dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const refreshRaw = signRefreshToken({ uid: user._id.toString(), did: deviceId });
+// async function createSessionAndTokens(user, devId,deviceInfo = {}, ip = "") {
+//   const deviceId = devId || `dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+//   const refreshRaw = signRefreshToken({ uid: user._id.toString(), did: deviceId });
+//   const refreshHash = Session.hashToken(refreshRaw);
+
+//   const expiresAt = new Date(Date.now() + parseExpiryToMs(Tokens.refreshExp || "7d"));
+//   await Session.create({
+//     userId: user._id,
+//     deviceId,
+//     refreshTokenHash: refreshHash,
+//     ip,
+//     language: deviceInfo?.language,
+//     os: deviceInfo?.os,
+//     screen: deviceInfo?.screen,
+//     userAgent: deviceInfo?.userAgent || "",
+//     expiresAt,
+//   });
+
+//   const accessRaw = signAccessToken({ uid: user._id.toString(), role: user.role, did: deviceId });
+
+//   return { accessToken: accessRaw, refreshToken: refreshRaw, deviceId };
+// }
+
+async function createSessionAndTokens(user, devId, deviceInfo = {}, ip = "") {
+  console.log(devId);
+  const deviceId =
+    devId || `dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  // 🔥 1) Pahle se existing session check karo
+  let session = await Session.findOne({ userId: user._id, deviceId });
+
+  const refreshRaw = signRefreshToken({
+    uid: user._id.toString(),
+    did: deviceId,
+  });
   const refreshHash = Session.hashToken(refreshRaw);
 
-  const expiresAt = new Date(Date.now() + parseExpiryToMs(Tokens.refreshExp || "7d"));
+  const expiresAt = new Date(
+    Date.now() + parseExpiryToMs(Tokens.refreshExp || "7d")
+  );
 
-  await Session.create({
-    userId: user._id,
-    deviceId,
-    refreshTokenHash: refreshHash,
-    ip,
-    userAgent: deviceInfo.userAgent || "",
-    expiresAt,
+  if (session) {
+    // 🔥 2) Agar session already hai → usko update karo (Naya create mat karo)
+    session.refreshTokenHash = refreshHash;
+    session.ip = ip || session.ip;
+    session.language = deviceInfo?.language || session.language;
+    session.os = deviceInfo?.os || session.os;
+    session.screen = deviceInfo?.screen || session.screen;
+    session.userAgent = deviceInfo?.userAgent || session.userAgent;
+    session.expiresAt = expiresAt;
+    await session.save();
+  } else {
+    // 🔥 3) Agar session nahi mila → naya create karo
+    session = await Session.create({
+      userId: user._id,
+      deviceId,
+      refreshTokenHash: refreshHash,
+      ip,
+      language: deviceInfo?.language,
+      os: deviceInfo?.os,
+      screen: deviceInfo?.screen,
+      userAgent: deviceInfo?.userAgent || "",
+      expiresAt,
+    });
+  }
+
+  const accessRaw = signAccessToken({
+    uid: user._id.toString(),
+    role: user.role,
+    did: deviceId,
   });
-
-  const accessRaw = signAccessToken({ uid: user._id.toString(), role: user.role, did: deviceId });
 
   return { accessToken: accessRaw, refreshToken: refreshRaw, deviceId };
 }
 
+
 // ---------------- Register ----------------
 async function registerManual(req, res, next) {
   try {
-    const { name, email, password, deviceId } = req.body;
+    const { name, email, password, deviceId, deviceInfo = {} } = req.body;
     if (!name || !email) throw new BadRequestError("Name and email are required");
 
     // 1️⃣ Check if user already verified
@@ -104,21 +159,17 @@ async function registerManual(req, res, next) {
     // 4️⃣ Remove old sessions for this user
     await Session.deleteMany({ userId: user._id });
 
-    // 5️⃣ Create new session
-    const deviceInfo = {
-      ip: req.ip,
-      deviceId: deviceId || req.body.deviceId || "",
-      userAgent: req.headers["user-agent"] || "",
-    };
-
     const session = await Session.create({
       userId: user._id,
-      deviceId: deviceInfo.deviceId,
-      ip: deviceInfo.ip,
-      userAgent: deviceInfo.userAgent,
+      deviceId: deviceId,
+      ip: req.ip,
       emailOTP: verificationCode,
       emailExpiry: new Date(verificationExpiry),
       webToken: webToken,
+      language: deviceInfo?.language || "en-US",
+      os: deviceInfo?.os || "",
+      screen: deviceInfo?.screen || "",
+      userAgent: deviceInfo?.userAgent || "",
       expiresAt: new Date(Date.now() + parseExpiryToMs(Tokens.webTokenExp || "15m")),
     });
 
@@ -181,7 +232,7 @@ async function verifyAuthMail(req, res, next) {
       if (session.emailOTP !== otp)
         throw new BadRequestError("Invalid OTP");
 
-      if (session.emailOTPExpiry < Date.now())
+      if (session?.emailExpiry < Date.now())
         throw new BadRequestError("OTP expired");
     }
 
@@ -204,7 +255,7 @@ async function verifyAuthMail(req, res, next) {
 // ---------------- Login ----------------
 async function loginManual(req, res, next) {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId, deviceInfo = {} } = req.body;
     if (!email || !password) throw new BadRequestError("Email and password required");
 
     const user = await User.findOne({ email: email.toLowerCase() });
@@ -219,8 +270,9 @@ async function loginManual(req, res, next) {
       throw new UnauthorizedError("Please verify your email before logging in.");
     }
     console.log("fdfdf fds")
-    const deviceInfo = { deviceId: req.body.deviceId, userAgent: req.headers["user-agent"] || "" };
-    const tokens = await createSessionAndTokens(user, deviceInfo, req.ip);
+
+
+    const tokens = await createSessionAndTokens(user, deviceId, deviceInfo, req.ip);
 
     const safeUser = user.safeProfile ? user.safeProfile() : { id: user._id, name: user.name, email: user.email };
 
@@ -243,25 +295,45 @@ async function loginManual(req, res, next) {
 // ---------------- Refresh Token ----------------
 async function refreshTokenHandler(req, res, next) {
   try {
-    console.log("fdkfndskfsd");
     const oldRefresh = req.body?.refreshToken || req?.cookies?.refreshToken;
     if (!oldRefresh) throw new BadRequestError("Refresh token missing");
-    console.log(oldRefresh);
 
     let payload;
-    try { payload = verifyRefreshToken(oldRefresh); }
-    catch (e) { throw new UnauthorizedError("Invalid or expired refresh token"); }
-
-    const { uid: userId, did: deviceId } = payload;
-    if (!userId || !deviceId) throw new UnauthorizedError("Invalid refresh token payload");
-
-    const hashed = Session.hashToken(oldRefresh);
-    const session = await Session.findOne({ userId, deviceId, refreshTokenHash: hashed, revoked: false });
-    if (!session) {
-      await Session.updateMany({ userId }, { revoked: true });
-      throw new UnauthorizedError("Refresh token invalid or reused — login required");
+    try {
+      payload = verifyRefreshToken(oldRefresh);
+    } catch (e) {
+      res.clearCookie("refreshToken");
+      throw new UnauthorizedError("Invalid or expired refresh token");
     }
 
+    const { uid: userId, did: deviceId } = payload;
+    if (!userId || !deviceId) {
+      res.clearCookie("refreshToken");
+      throw new UnauthorizedError("Invalid refresh token payload");
+    }
+
+    const hashed = Session.hashToken(oldRefresh);
+
+    const session = await Session.findOne({
+      userId: payload.uid,
+      deviceId: payload.did,
+      refreshTokenHash: hashed,
+      revoked: false
+    }).sort({ createdAt: -1 }); // latest created session first
+
+
+    if (!session) {
+      // refresh token reuse detected — security breach
+      res.clearCookie("refreshToken");
+
+      await Session.deleteMany({ userId }, { revoked: true });
+
+      throw new UnauthorizedError(
+        "Refresh token invalid or reused — please login again"
+      );
+    }
+
+    // rotate refresh token
     const newRefresh = signRefreshToken({ uid: userId, did: deviceId });
     session.refreshTokenHash = Session.hashToken(newRefresh);
     session.lastUsedAt = new Date();
@@ -272,17 +344,33 @@ async function refreshTokenHandler(req, res, next) {
     if (!user) throw new NotFoundError("User not found");
 
     const newAccess = signAccessToken({ uid: userId, role: user.role, did: deviceId });
-    return successResponse(res, "Token refreshed", { accessToken: newAccess, refreshToken: newRefresh });
+
+    // set fresh cookie
+    res.cookie("refreshToken", newRefresh, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return successResponse(res, "Token refreshed", {
+      accessToken: newAccess,
+      user: user
+    });
   } catch (err) {
     next(err);
   }
 }
+
+
 
 // ---------------- Logout ----------------
 async function logoutHandler(req, res, next) {
   try {
     const refresh = req.body?.refreshToken || req.cookies?.refreshToken;
     if (!refresh) throw new BadRequestError("Refresh token required");
+    console.log("I am refresh", refresh);
 
     let payload;
     try { payload = verifyRefreshToken(refresh); }
@@ -294,8 +382,35 @@ async function logoutHandler(req, res, next) {
       { revoked: true }
     );
 
-    res.clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: "strict" });
+    // res.clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: "strict" });
     return successResponse(res, "Logged out", {});
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /auth/me
+async function getMe(req, res, next) {
+  try {
+    const userId = req.user?._id; // access token middleware sets req.user
+
+    if (!userId) {
+      return res.status(401).json({ message: "Access token invalid" });
+    }
+
+    const user = await User.findById(userId).lean();
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // You can filter fields
+    return res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
+
   } catch (err) {
     next(err);
   }
@@ -307,5 +422,6 @@ module.exports = {
   refreshTokenHandler,
   logoutHandler,
   createSessionAndTokens,
-  verifyAuthMail
+  verifyAuthMail,
+  getMe
 };

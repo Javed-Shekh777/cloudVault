@@ -7,7 +7,8 @@ import {
   MdDelete,
   MdClose,
   MdAccountCircle,
-  MdLockPerson 
+  MdLockPerson ,
+  MdSettings
 } from "react-icons/md";
 
 const Item = ({ to, icon: Icon, label, setOpen }) => (
@@ -50,6 +51,8 @@ export default function Sidebar({ open, setOpen }) {
         <Item to="/trash" icon={MdDelete} label="Trash" setOpen={setOpen} />
         <Item to="/profile" icon={MdAccountCircle} label="Profile" setOpen={setOpen} />
         <Item to="/locked" icon={MdLockPerson } label="Locked" setOpen={setOpen} />
+        <Item to="/setting" icon={MdSettings} label="Setting" setOpen={setOpen} />
+
 
 
       </div>

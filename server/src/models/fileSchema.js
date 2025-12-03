@@ -96,8 +96,8 @@ const fileSchema = new mongoose.Schema(
         },
         permission: {
           type: String,
-          enum: ["viewer", "editor"],
-          default: "viewer",
+          enum: ["view", "edit"],
+          default: "view",
         },
       },
     ],
@@ -164,6 +164,7 @@ const fileSchema = new mongoose.Schema(
     },
 
     isLocked: { type: Boolean, default: false },
+
     lockReason: { type: String, default: null },
 
 

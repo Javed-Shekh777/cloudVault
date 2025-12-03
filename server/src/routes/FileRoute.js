@@ -1,13 +1,17 @@
 const upload = require('../config/multerconfig');
-const { 
-  getAllFiles, 
-  uploadFilesHandler, 
-  deleteFile, 
-  downloadFile, 
-  getStarredFiles, 
-  addRemoveStarred, 
-  toggleTrashStatus, 
-  addRemoveToLockedFolder
+const {
+  getAllFiles,
+  uploadFilesHandler,
+  deleteFile,
+  downloadFile,
+  getStarredFiles,
+  addRemoveStarred,
+  toggleTrashStatus,
+  addRemoveToLockedFolder,
+  shareFile,
+  getSharedWithMe,
+  createPublicShareLink,
+  openShareLink
 } = require('../controller/FileController');
 const { requireAuth } = require("../middleware/auth");
 const router = require('express').Router();
@@ -37,6 +41,10 @@ router.patch("/add-remove-trash/:id", requireAuth, toggleTrashStatus);
 
 // router.route("/trash").get(requireAuth, getAllFiles);
 
-router.route("/add-remove-locked/:id").patch(requireAuth,addRemoveToLockedFolder);
+router.route("/add-remove-locked/:id").patch(requireAuth, addRemoveToLockedFolder);
 
+router.route("/fileId/share").post(requireAuth, shareFile)
+router.route("/shared-with-me").get(requireAuth, getSharedWithMe)
+router.route("/:fileId/create-share-link").post(requireAuth, createPublicShareLink)
+router.route("/share/:fileId/:token").get(openShareLink);
 module.exports = router;
